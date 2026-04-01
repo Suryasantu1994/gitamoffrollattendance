@@ -78,7 +78,7 @@
   .page-header p{font-size:13px;color:var(--text-light);margin-top:3px;}
 
   /* ── STAT CARDS ── */
-  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px;}
   .stat-card{background:var(--white);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);border-top:3px solid var(--primary);transition:transform .2s,box-shadow .2s;}
   .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
   .stat-card.present{border-top-color:var(--present);}
@@ -319,8 +319,8 @@
   .star-detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;align-items:center;justify-content:center;}
   .star-detail-overlay.open{display:flex;}
   .star-detail-modal{background:#fff;border-radius:14px;width:720px;max-width:97vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:mIn .25s ease;}
-  .star-detail-header{background:linear-gradient(135deg,var(--primary),#1a7a65);color:#fff;padding:20px 26px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between;}
-  .star-detail-header h2{font-family:'Playfair Display',serif;font-size:20px;}
+  .star-detail-header{background:linear-gradient(135deg,var(--primary),#1a7a65);color:#fff;padding:20px 26px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .star-detail-header h2{font-family:'Playfair Display',serif;font-size:18px;}
   .star-detail-tabs{display:flex;gap:0;border-bottom:2px solid var(--sand-dark);padding:0 20px;background:var(--sand);}
   .star-tab{padding:10px 18px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--text-light);transition:all .2s;}
   .star-tab.active{color:var(--primary);border-bottom-color:var(--primary);}
@@ -334,6 +334,26 @@
   .cons-dot.c3{background:#38bdf8;}
   .cons-dot.c2{background:#fb923c;}
   .cons-dot.c1{background:#f87171;}
+  /* ── SHORTAGE ── */
+  :root{--shortage:#c0392b;--shortage-light:#fde8e8;--ok:#27AE60;--ok-light:#d4f4e2;--warn:#e67e22;--warn-light:#fef0e6;}
+  .shortage-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+  .shortage-badge.critical{background:var(--shortage-light);color:var(--shortage);}
+  .shortage-badge.warn{background:var(--warn-light);color:var(--warn);}
+  .shortage-badge.ok{background:var(--ok-light);color:var(--ok);}
+  .shortage-bar-wrap{background:var(--sand-dark);border-radius:4px;height:14px;overflow:hidden;width:100%;min-width:80px;}
+  .shortage-bar{height:100%;border-radius:4px;transition:width .6s ease;}
+  .shortage-bar.critical{background:linear-gradient(90deg,var(--shortage),#e74c3c);}
+  .shortage-bar.warn{background:linear-gradient(90deg,var(--warn),#f39c12);}
+  .shortage-bar.ok{background:linear-gradient(90deg,var(--ok),#52c77f);}
+  .stat-card.shortage{border-top-color:var(--shortage);}
+  .stat-card.shortage .stat-value{color:var(--shortage);}
+  .stat-card.ok-strength{border-top-color:var(--ok);}
+  .stat-card.ok-strength .stat-value{color:var(--ok);}
+  .critical-bldg-row{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:8px;background:#fff5f5;border-left:4px solid var(--shortage);margin-bottom:8px;}
+  .critical-bldg-name{font-weight:700;font-size:14px;color:var(--shortage);flex:1;}
+  .critical-bldg-nums{font-size:12px;color:var(--text-mid);}
+  .b-stat.shortage{color:var(--shortage);}
+
   .cons-dot.c0{background:#e2e8f0;}
 </style>
 </head>
@@ -387,6 +407,8 @@
       <div class="nav-section">Attendance</div>
       <div class="nav-item" data-page="daily" onclick="navigate('daily')"><span class="nav-icon">📅</span><span class="nav-label">Daily Marking</span></div>
       <div class="nav-item" data-page="monthly" onclick="navigate('monthly')"><span class="nav-icon">📋</span><span class="nav-label">Monthly Report</span></div>
+      <div class="nav-section">Analysis</div>
+      <div class="nav-item" data-page="shortage" onclick="navigate('shortage')"><span class="nav-icon">⚠️</span><span class="nav-label">Shortage Report</span></div>
       <div class="nav-section">Manager/Supervisors</div>
       <div class="nav-item" data-page="staff" onclick="navigate('staff')"><span class="nav-icon">👥</span><span class="nav-label">Staff Management</span></div>
     </nav>
@@ -400,6 +422,7 @@
           <input type="date" id="dashDate" style="width:170px;" onchange="renderDashboard()">
         </div>
         <div class="stat-grid" id="dashStats"></div>
+        <div id="dashShortageCard" style="margin-bottom:0;margin-top:-8px;"></div>
         <div class="stat-grid" id="workforceStats" style="grid-template-columns:repeat(5,1fr);margin-bottom:24px;"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
           <div class="card"><div class="card-title">🏢 Building-Wise Attendance</div><div id="buildingChart"></div></div>
@@ -445,7 +468,8 @@
               <button class="btn btn-primary btn-sm" onclick="saveBldgAttendance()">💾 Save Attendance</button>
             </div>
           </div>
-          <div class="stat-grid" id="bldgStats" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;"></div>
+          <div id="bldgShortageBanner"></div>
+          <div class="stat-grid" id="bldgStats" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:16px;"></div>
           <div class="att-grid" id="bldgAttGrid"></div>
         </div>
       </div>
@@ -514,7 +538,46 @@
         </div>
       </div>
 
+      <!-- SHORTAGE REPORT -->
+      <div class="page" id="page-shortage">
+        <div class="page-header">
+          <div><h1>⚠️ Shortage Report</h1><p>Building-wise required vs. actual strength & shortage analysis</p></div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <input type="date" id="shortageDate" style="width:170px;" onchange="renderShortage()">
+            <button class="btn btn-primary btn-sm" onclick="openShortageConfig()" id="shortageConfigBtn" style="display:none;">⚙️ Set Required Strength</button>
+          </div>
+        </div>
+        <!-- Summary cards -->
+        <div class="stat-grid" id="shortageSummary" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;"></div>
+        <!-- Building-wise table -->
+        <div class="card">
+          <div class="card-title">🏢 Building-Wise Shortage Analysis</div>
+          <div class="table-wrap" id="shortageTableWrap"></div>
+        </div>
+        <!-- Critical shortages -->
+        <div class="card" id="criticalShortageCard" style="display:none;">
+        <div class="card-title" style="color:var(--danger);">🚨 Critical Shortages (Fill Rate &lt; 80% of Required)</div>
+          <div id="criticalShortageList"></div>
+        </div>
+      </div>
+
     </main>
+  </div>
+</div>
+
+<!-- SHORTAGE CONFIG MODAL -->
+<div class="modal-overlay" id="shortageConfigModal">
+  <div class="modal" style="width:540px;max-height:85vh;overflow-y:auto;">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Set Required Strength per Building</div>
+      <button class="modal-close" onclick="closeShortageConfig()">✕</button>
+    </div>
+    <p style="font-size:12px;color:var(--text-light);margin-bottom:16px;">Set the <strong>required/sanctioned headcount</strong> for each building. This is used to calculate shortages.</p>
+    <div id="shortageConfigForm" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeShortageConfig()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveShortageConfig()">💾 Save</button>
+    </div>
   </div>
 </div>
 
@@ -568,8 +631,14 @@
 <div class="star-detail-overlay" id="starDetailOverlay">
   <div class="star-detail-modal">
     <div class="star-detail-header">
-      <h2>⭐ Attendance Star Ratings — Staff Breakdown</h2>
-      <button class="modal-close" style="color:#fff;font-size:22px;background:none;border:none;cursor:pointer;" onclick="closeStarDetail()">✕</button>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <h2>⭐ Attendance Star Ratings — Staff Breakdown</h2>
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);border-radius:8px;padding:5px 12px;">
+          <label style="font-size:11px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.7px;font-weight:600;white-space:nowrap;">View Month:</label>
+          <input type="month" id="starViewMonth" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:6px;padding:4px 8px;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;" onchange="onStarMonthChange(this.value)">
+        </div>
+      </div>
+      <button class="modal-close" style="color:#fff;font-size:22px;background:none;border:none;cursor:pointer;flex-shrink:0;" onclick="closeStarDetail()">✕</button>
     </div>
     <div class="star-detail-tabs" id="starDetailTabs">
       <div class="star-tab active" onclick="switchStarTab(5,this)">★★★★★ Excellent</div>
@@ -770,7 +839,7 @@ const KNOWN_BUILDINGS=[
   'STAFF QUARTERS','NORTH BOYS HOSTEL','SOUTH GIRLS HOSTEL',
   'DINING','Manager/Supervisors','GARDEN'
 ];
-const STATE={staff:[],att:{},timeLogs:{},ready:false};
+const STATE={staff:[],att:{},timeLogs:{},requiredStrength:{},ready:false};
 let currentPage='dashboard';
 
 // ── DB ────────────────────────────────────────────────────────
@@ -796,6 +865,11 @@ const DB={
     fbdb.ref().update(fbUp).catch(e=>toast('❌ Time save failed: '+e.message,true));
     if(!STATE.timeLogs[d])STATE.timeLogs[d]={};
     Object.assign(STATE.timeLogs[d],updates);
+  },
+  getRequiredStrength(bldg){return STATE.requiredStrength[bldg]||0;},
+  setRequiredStrength(data){
+    fbdb.ref('requiredStrength').update(data).catch(e=>toast('❌ Save failed: '+e.message,true));
+    Object.assign(STATE.requiredStrength,data);
   }
 };
 
@@ -860,6 +934,10 @@ async function initFirebase(){
       STATE.timeLogs=snap.exists()?snap.val():{};
       if(STATE.ready) refreshPassiveViews();
     });
+    fbdb.ref('requiredStrength').on('value',snap=>{
+      STATE.requiredStrength=snap.exists()?snap.val():{};
+      if(STATE.ready) refreshPassiveViews();
+    });
     document.getElementById('syncDot').className='sync-dot';
     renderDashboard();
   } catch(e){
@@ -874,6 +952,7 @@ function refreshPassiveViews(){
   else if(currentPage==='building') renderBuildingCards();
   else if(currentPage==='monthly') renderMonthly();
   else if(currentPage==='staff') renderStaffTable();
+  else if(currentPage==='shortage') renderShortage();
 }
 
 function setLoading(show,msg=''){
@@ -917,7 +996,7 @@ function navigate(page){
   document.getElementById('page-'+page).classList.add('active');
   document.querySelector(`[data-page="${page}"]`).classList.add('active');
   currentPage=page;
-  ({'dashboard':renderDashboard,'building':renderBuilding,'daily':renderDaily,'monthly':renderMonthly,'staff':renderStaff})[page]?.();
+  ({'dashboard':renderDashboard,'building':renderBuilding,'daily':renderDaily,'monthly':renderMonthly,'staff':renderStaff,'shortage':renderShortage})[page]?.();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────
@@ -928,13 +1007,62 @@ function renderDashboard(){
   const scopedStaff=accessFilter(DB.staff);
   const activeStaff=scopedStaff.filter(s=>!isInactive(s));
   const s=getSum(d);
-  const pct=s.total?Math.round(s.P/s.total*100):0;
+  // Attendance rate denominator = required strength (active + shortage) if configured, else just active
+  const _allBldgsD=getBuildings();
+  let _totalReqD=0;
+  _allBldgsD.forEach(b=>{const r=DB.getRequiredStrength(b);if(r>0)_totalReqD+=r;});
+  const _denom=_totalReqD>s.total?_totalReqD:s.total;
+  const pct=_denom?Math.round(s.P/_denom*100):0;
 
   document.getElementById('dashStats').innerHTML=`
     <div class="stat-card total"><div class="stat-label">Total Active Staff</div><div class="stat-value">${s.total}</div><div class="stat-sub">Registered employees</div></div>
     <div class="stat-card present"><div class="stat-label">Present</div><div class="stat-value">${s.P}</div><div class="stat-sub">${pct}% attendance rate</div></div>
     <div class="stat-card absent"><div class="stat-label">Absent</div><div class="stat-value">${s.A}</div><div class="stat-sub">Not on duty</div></div>
     <div class="stat-card weekoff"><div class="stat-label">Week Off</div><div class="stat-value">${s.WO}</div><div class="stat-sub">Scheduled day off</div></div>`;
+
+  // Shortage summary on dashboard
+  const bldgsForShortage=getBuildings();
+  let totalRequired=0,totalEnrolled=0,shortageBuildings=0;
+  bldgsForShortage.forEach(b=>{
+    const req=DB.getRequiredStrength(b);
+    if(req>0){
+      const bs=getSum(d,b);
+      totalRequired+=req;totalEnrolled+=bs.total;
+      if(bs.total<req) shortageBuildings++;
+    }
+  });
+  const totalShortage=Math.max(totalRequired-totalEnrolled,0);
+
+  // Inject Total Required Strength into the main stat grid
+  const reqCard=totalRequired>0
+    ?`<div class="stat-card" style="border-top-color:#6366f1;">
+        <div class="stat-label">Required Strength</div>
+        <div class="stat-value" style="color:#6366f1;">${totalRequired}</div>
+        <div class="stat-sub">Sanctioned headcount</div>
+      </div>`
+    :'';
+
+  document.getElementById('dashStats').innerHTML=`
+    <div class="stat-card total"><div class="stat-label">Total Active Staff</div><div class="stat-value">${s.total}</div><div class="stat-sub">Registered employees</div></div>
+    <div class="stat-card present"><div class="stat-label">Present</div><div class="stat-value">${s.P}</div><div class="stat-sub">${pct}% attendance rate</div></div>
+    <div class="stat-card absent"><div class="stat-label">Absent</div><div class="stat-value">${s.A}</div><div class="stat-sub">Not on duty</div></div>
+    <div class="stat-card weekoff"><div class="stat-label">Week Off</div><div class="stat-value">${s.WO}</div><div class="stat-sub">Scheduled day off</div></div>
+    ${reqCard}`;
+
+  const shortageEl=document.getElementById('dashShortageCard');
+  if(shortageEl){
+    if(totalRequired>0){
+      shortageEl.style.display='';
+      shortageEl.innerHTML=`
+        <div class="stat-card shortage clickable" onclick="navigate('shortage')" style="cursor:pointer;">
+          <div class="stat-label">⚠️ Total Shortage</div>
+          <div class="stat-value">${totalShortage}</div>
+          <div class="stat-sub">${shortageBuildings} building${shortageBuildings!==1?'s':''} under strength · Click for details</div>
+        </div>`;
+    } else {
+      shortageEl.style.display='none';
+    }
+  }
 
   // Workforce stats
   const joinedThisMonth=scopedStaff.filter(x=>x.joiningDate&&x.joiningDate.startsWith(month)).length;
@@ -962,6 +1090,11 @@ function renderDashboard(){
     const bp=bs.total?Math.round(bs.P/bs.total*100):0;
     const bm=accessFilter(DB.staff).filter(s=>s.building===b&&!isInactive(s)&&s.gender==='M').length;
     const bf2=accessFilter(DB.staff).filter(s=>s.building===b&&!isInactive(s)&&s.gender==='F').length;
+    const req=DB.getRequiredStrength(b);
+    const shortage=req>0?Math.max(req-bs.total,0):0;
+    const shortageTag=req>0?(shortage>0
+      ?`<span style="font-size:10px;font-weight:700;color:${shortage/req>0.4?'var(--shortage)':'var(--warn)'};white-space:nowrap;">⚠ -${shortage}</span>`
+      :`<span style="font-size:10px;color:var(--ok);white-space:nowrap;">✓</span>`):'';
     chartHtml+=`<div class="chart-row">
       <div class="chart-label" title="${b}">${b}</div>
       <div class="chart-bar-wrap"><div class="chart-bar pb" style="width:${bp}%">
@@ -970,20 +1103,24 @@ function renderDashboard(){
       <div class="chart-pct">${bp}%</div>
       <div style="font-size:11px;color:var(--male);width:28px;text-align:center" title="Male">♂${bm}</div>
       <div style="font-size:11px;color:var(--female);width:28px;text-align:center" title="Female">♀${bf2}</div>
+      <div style="width:40px;text-align:center">${shortageTag}</div>
     </div>`;
   });
   document.getElementById('buildingChart').innerHTML=chartHtml||'<div class="empty"><div class="empty-icon">🏢</div>No buildings</div>';
 
   // Monthly trend
   const days=getDays(month);
-  let bars='<div style="display:flex;gap:2px;align-items:flex-end;height:80px;">';
+  let bars='<div style="display:flex;gap:2px;align-items:flex-end;height:100px;padding-top:18px;">';
   for(let i=1;i<=days;i++){
     const dd=`${month}-${String(i).padStart(2,'0')}`;
     const ds=getSum(dd);
     const dp=ds.total?Math.round(ds.P/ds.total*100):0;
     const isD=dd===d,isFut=dd>today();
-    bars+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;">
-      <div style="width:100%;background:${isD?'var(--gold)':'var(--primary-mid)'};border-radius:3px 3px 0 0;height:${Math.max(dp*.72,2)}px;opacity:${isFut?.15:.85}" title="${dd}: ${dp}%"></div></div>`;
+    const barH=Math.max(dp*.72,2);
+    bars+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;">
+      ${!isFut&&dp>0?`<span style="font-size:7px;font-weight:700;color:${isD?'var(--gold)':'var(--text-mid)'};line-height:1;margin-bottom:1px;white-space:nowrap;">${dp}%</span>`:''}
+      <div style="width:100%;background:${isD?'var(--gold)':'var(--primary-mid)'};border-radius:3px 3px 0 0;height:${barH}px;opacity:${isFut?.15:.85}" title="${dd}: ${dp}%"></div>
+    </div>`;
   }
   bars+=`</div><div style="display:flex;justify-content:space-between;margin-top:4px;">
     <span style="font-size:11px;color:var(--text-light)">1</span>
@@ -1133,6 +1270,15 @@ function renderBuildingCards(){
     const bm=accessFilter(DB.staff).filter(x=>x.building===b&&!isInactive(x)&&x.gender==='M').length;
     const bf2=accessFilter(DB.staff).filter(x=>x.building===b&&!isInactive(x)&&x.gender==='F').length;
     const locked=!isAdmin()&&b!==myBuilding();
+    const req=DB.getRequiredStrength(b);
+    const shortage=req>0?Math.max(req-s.total,0):0;
+    const shortageHtml=req>0&&!locked?`
+      <div style="margin-top:5px;display:flex;align-items:center;gap:6px;">
+        <span style="font-size:10px;color:var(--text-light);">Required: ${req}</span>
+        ${shortage>0
+          ?`<span class="shortage-badge ${shortage/req>0.4?'critical':'warn'}">⚠ Short ${shortage}</span>`
+          :`<span class="shortage-badge ok">✓ Adequate</span>`}
+      </div>`:'';
     html+=`<div class="building-card ${selBldg===b?'sel':''} ${locked?'':'cursor-pointer'}" 
       onclick="selBldgFn('${b}','${d}')" style="${locked?'opacity:.45;cursor:not-allowed;':''}">
       <div class="building-name">🏢 ${b}${locked?' 🔒':''}</div>
@@ -1147,6 +1293,7 @@ function renderBuildingCards(){
         <span style="font-size:11px;color:var(--text-light)">${locked?'No access':pct+'% attendance'}</span>
         <span style="font-size:11px;">${locked?'':('<span style="color:var(--male)">♂'+bm+'</span> <span style="color:var(--female)">♀'+bf2+'</span>')}</span>
       </div>
+      ${shortageHtml}
     </div>`;
   });
   document.getElementById('buildingCards').innerHTML=html;
@@ -1161,6 +1308,7 @@ function showBldgDetail(b,d){
   if(!isAdmin()&&b!==myBuilding()){
     document.getElementById('buildingDetail').style.display='block';
     document.getElementById('buildingDetailTitle').innerHTML=`🏢 ${b}`;
+    document.getElementById('bldgShortageBanner').innerHTML='';
     document.getElementById('bldgStats').innerHTML='';
     document.getElementById('bldgAttGrid').innerHTML='<div class="access-denied"><div class="icon">🔒</div><h2>Access Denied</h2><p>You can only view and mark attendance for your assigned building.</p></div>';
     document.getElementById('bldgAttSummary').textContent='';
@@ -1175,11 +1323,53 @@ function showBldgDetail(b,d){
   let P=0,A=0,WO=0;
   staff.forEach(s=>{const st=att[s.id]||'A';if(st==='P')P++;else if(st==='WO')WO++;else A++;});
   const pct=staff.length?Math.round(P/staff.length*100):0;
+
+  // Shortage calculation
+  const req=DB.getRequiredStrength(b);
+  const shortage=req>0?Math.max(req-staff.length,0):0;
+  const fillPct=req>0?Math.round(staff.length/req*100):null;
+  const isCritical=fillPct!==null&&fillPct<80;
+  const isWarn=fillPct!==null&&fillPct>=80&&fillPct<100;
+  const isOk=fillPct!==null&&fillPct>=100;
+
+  // Shortage banner
+  const shortageBanner=req>0?`
+    <div style="margin-bottom:14px;border-radius:10px;overflow:hidden;box-shadow:var(--shadow);">
+      <div style="padding:10px 16px;display:flex;align-items:center;gap:10px;background:${isCritical?'#fde8e8':isWarn?'#fef0e6':'#d4f4e2'};">
+        <span style="font-size:20px;">${isCritical?'🚨':isWarn?'⚠️':'✅'}</span>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:13px;color:${isCritical?'var(--shortage)':isWarn?'var(--warn)':'var(--ok)'};">
+            ${isCritical?`CRITICAL — Shortage of ${shortage} staff (Fill Rate: ${fillPct}%)`:
+              isWarn?`Shortage of ${shortage} staff (Fill Rate: ${fillPct}%)`:
+              `Fully Staffed (Fill Rate: ${fillPct}%)`}
+          </div>
+          <div style="font-size:11px;color:var(--text-mid);margin-top:2px;">
+            Required: <strong>${req}</strong> &nbsp;·&nbsp; Active: <strong>${staff.length}</strong> &nbsp;·&nbsp; Shortage: <strong style="color:${shortage>0?(isCritical?'var(--shortage)':'var(--warn)'):'var(--ok)'};">${shortage>0?'-'+shortage:'None'}</strong>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:24px;font-weight:800;font-family:'Playfair Display',serif;color:${isCritical?'var(--shortage)':isWarn?'var(--warn)':'var(--ok)'};">${fillPct}%</div>
+          <div style="font-size:10px;color:var(--text-light);">fill rate</div>
+        </div>
+      </div>
+      <div style="height:6px;background:var(--sand-dark);">
+        <div style="height:100%;width:${Math.min(fillPct,100)}%;background:${isCritical?'linear-gradient(90deg,var(--shortage),#e74c3c)':isWarn?'linear-gradient(90deg,var(--warn),#f39c12)':'linear-gradient(90deg,var(--ok),#52c77f)'};transition:width .6s ease;"></div>
+      </div>
+    </div>`:'';
+
+  document.getElementById('bldgShortageBanner').innerHTML=shortageBanner;
+  const shortageStatCard=req>0?`
+    <div class="stat-card" style="border-top-color:${isCritical?'var(--shortage)':isWarn?'var(--warn)':'var(--ok)'};">
+      <div class="stat-label">${isCritical?'🚨 Shortage':isWarn?'⚠️ Shortage':'✅ Required'}</div>
+      <div class="stat-value" style="font-size:28px;color:${isCritical?'var(--shortage)':isWarn?'var(--warn)':'var(--ok)'};">${shortage>0?'-'+shortage:'OK'}</div>
+      <div class="stat-sub">Required: ${req} · ${fillPct}% filled</div>
+    </div>`:'';
   document.getElementById('bldgStats').innerHTML=`
     <div class="stat-card total"><div class="stat-label">Total</div><div class="stat-value">${staff.length}</div><div class="stat-sub">Active members</div></div>
     <div class="stat-card present"><div class="stat-label">Present</div><div class="stat-value">${P}</div><div class="stat-sub">${pct}%</div></div>
     <div class="stat-card absent"><div class="stat-label">Absent</div><div class="stat-value">${A}</div></div>
-    <div class="stat-card weekoff"><div class="stat-label">Week Off</div><div class="stat-value">${WO}</div></div>`;
+    <div class="stat-card weekoff"><div class="stat-label">Week Off</div><div class="stat-value">${WO}</div></div>
+    ${shortageStatCard}`;
   const html=staff.map(s=>{
     const st=att[s.id]||'A';
     const disableInputs=!canEdit;
@@ -1378,10 +1568,10 @@ function saveAttendance(){
 // ── STAR RATING HELPER ────────────────────────────────────────
 function getStarRating(pct){
   let stars, cls, label;
-  if(pct>=90){stars=5;cls='s5';label='★★★★★';}
-  else if(pct>=80){stars=4;cls='s4';label='★★★★☆';}
-  else if(pct>=70){stars=3;cls='s3';label='★★★☆☆';}
-  else if(pct>=50){stars=2;cls='s2';label='★★☆☆☆';}
+  if(pct>=100){stars=5;cls='s5';label='★★★★★';}
+  else if(pct>=90){stars=4;cls='s4';label='★★★★☆';}
+  else if(pct>=80){stars=3;cls='s3';label='★★★☆☆';}
+  else if(pct>=70){stars=2;cls='s2';label='★★☆☆☆';}
   else{stars=1;cls='s1';label='★☆☆☆☆';}
   return`<span class="star-cell ${cls}" title="${pct}% — ${stars} star${stars>1?'s':''}">${label}</span>`;
 }
@@ -1814,14 +2004,15 @@ function closeJoiningModal(){document.getElementById('joiningModal').classList.r
 // ── STAR RATING CARD ──────────────────────────────────────────
 let _starData=null; // cached computation
 
-function computeStarData(lookbackMonths=3){
+function computeStarData(lookbackMonths=3, viewMonth=null){
   const staff=accessFilter(DB.staff).filter(s=>!isInactive(s));
-  // Build list of months to check (current month + lookback)
+  // viewMonth: the month whose ratings are shown as "current" (default: this month)
+  const refDate=viewMonth?new Date(viewMonth+'-01'):new Date();
+  // Build list of months: 2 before viewMonth + viewMonth itself (3 months total for trend)
   const months=[];
-  const now=new Date();
-  for(let i=0;i<lookbackMonths;i++){
-    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    months.unshift(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  for(let i=lookbackMonths-1;i>=0;i--){
+    const d=new Date(refDate.getFullYear(),refDate.getMonth()-i,1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   }
 
   function staffPct(s,month){
@@ -1834,23 +2025,23 @@ function computeStarData(lookbackMonths=3){
     }
     return days?Math.round((P+WO)/days*100):0;
   }
-  function pctToStars(p){return p>=90?5:p>=80?4:p>=70?3:p>=50?2:1;}
+  function pctToStars(p){return p>=100?5:p>=90?4:p>=80?3:p>=70?2:1;}
 
   const staffRatings=staff.map(s=>{
     const monthlyStars=months.map(m=>({month:m,pct:staffPct(s,m),stars:pctToStars(staffPct(s,m))}));
     const currentStars=monthlyStars[monthlyStars.length-1].stars;
     const avgStars=monthlyStars.reduce((a,b)=>a+b.stars,0)/monthlyStars.length;
-    const consistent=monthlyStars.every(m=>m.stars>=4); // 4+ stars every month
-    const consistentHigh=monthlyStars.every(m=>m.stars===5); // all 5 stars
+    const consistent=monthlyStars.every(m=>m.stars>=4);
+    const consistentHigh=monthlyStars.every(m=>m.stars===5);
     return{...s,monthlyStars,currentStars,avgStars:Math.round(avgStars*10)/10,consistent,consistentHigh};
   });
 
-  // Group by current month stars
+  // Group by the selected (last) month's stars
   const tiers={5:[],4:[],3:[],2:[],1:[]};
   staffRatings.forEach(s=>tiers[s.currentStars].push(s));
   const topPerformers=staffRatings.filter(s=>s.consistent).sort((a,b)=>b.avgStars-a.avgStars);
 
-  return{months,tiers,topPerformers,staffRatings};
+  return{months,tiers,topPerformers,staffRatings,viewMonth:months[months.length-1]};
 }
 
 function renderStarCard(){
@@ -1875,11 +2066,28 @@ function renderStarCard(){
 
 // ── STAR DETAIL MODAL ─────────────────────────────────────────
 let _activeStarTab=5;
+let _starViewMonth=todayMonth(); // tracks selected month in modal
+
 function showStarDetail(){
-  if(!_starData) _starData=computeStarData(3);
+  // Initialise month picker to current month, capped at today
+  const picker=document.getElementById('starViewMonth');
+  picker.max=todayMonth();
+  if(!picker.value) picker.value=todayMonth();
+  _starViewMonth=picker.value;
+  _starData=computeStarData(3,_starViewMonth);
   document.getElementById('starDetailOverlay').classList.add('open');
+  // Reset to first tab
+  _activeStarTab=5;
+  document.querySelectorAll('.star-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
   renderStarTab(_activeStarTab);
 }
+
+function onStarMonthChange(val){
+  _starViewMonth=val;
+  _starData=computeStarData(3,val);
+  renderStarTab(_activeStarTab);
+}
+
 function closeStarDetail(){document.getElementById('starDetailOverlay').classList.remove('open');}
 function switchStarTab(n,el){
   _activeStarTab=n;
@@ -1924,7 +2132,7 @@ function renderStarTab(n){
   if(n==='consistent'){
     list=topPerformers;
     heading=`<div style="background:#fef9ed;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e;">
-      🏆 <strong>${list.length} staff</strong> maintained ★★★★☆ or better rating consistently across all ${months.length} months.
+      🏆 <strong>${list.length} staff</strong> maintained ★★★★☆ or better rating consistently across all ${months.length} months shown.
     </div>`;
   } else {
     list=tiers[n];
@@ -1932,8 +2140,9 @@ function renderStarTab(n){
     const colours=['','#fef2f2','#fff7ed','#eff6ff','#f0fdf4','#fef9ed'][n];
     const textCol=['','#dc2626','#ea580c','#2563eb','#16a34a','#d97706'][n];
     const labels=['','Poor','Below Average','Average','Good','Excellent'][n];
+    const viewMonthLabel=new Date(months[months.length-1]+'-01').toLocaleString('en',{month:'long',year:'numeric'});
     heading=`<div style="background:${colours};border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:${textCol};">
-      ${starStr} <strong>${list.length} staff</strong> rated <strong>${labels}</strong> based on current month attendance.
+      ${starStr} <strong>${list.length} staff</strong> rated <strong>${labels}</strong> based on <strong>${viewMonthLabel}</strong> attendance.
     </div>`;
   }
 
@@ -1943,6 +2152,202 @@ function renderStarTab(n){
       <tbody>${staffRows(list)}</tbody>
     </table></div>
     <div style="margin-top:12px;font-size:11px;color:var(--text-light);">% = (Present + Week Off) ÷ Working Days. Trend dots show rating per month from oldest to newest.</div>`;
+}
+
+// ── SHORTAGE REPORT ───────────────────────────────────────────
+function renderShortage(){
+  if(!STATE.ready) return;
+  const el=document.getElementById('shortageDate');
+  if(!el.value) el.value=today();
+  const d=el.value;
+  // Show config button only for admin
+  const cfgBtn=document.getElementById('shortageConfigBtn');
+  if(cfgBtn) cfgBtn.style.display=isAdmin()?'':'none';
+
+  const bldgs=getBuildings();
+  let totalRequired=0,totalPresent=0,totalActive=0,shortageCount=0,criticalCount=0;
+  const rows=[];
+
+  bldgs.forEach(b=>{
+    const bs=getSum(d,b);
+    const req=DB.getRequiredStrength(b);
+    // Shortage = required minus total active (P + A + WO)
+    const shortage=req>0?Math.max(req-bs.total,0):0;
+    const pct=req>0?Math.round(bs.total/req*100):null;
+    const activePct=bs.total?Math.round(bs.P/bs.total*100):0;
+    const level=pct===null?'none':pct>=100?'ok':pct>=80?'warn':'critical';
+    totalRequired+=req;
+    totalPresent+=bs.P;
+    totalActive+=bs.total;
+    if(req>0&&shortage>0) shortageCount++;
+    if(level==='critical') criticalCount++;
+    rows.push({b,bs,req,shortage,pct,activePct,level});
+  });
+
+  const totalShortage=Math.max(totalRequired-totalActive,0);
+  const overallPct=totalRequired>0?Math.round(totalActive/totalRequired*100):null;
+
+  // Summary stat cards
+  document.getElementById('shortageSummary').innerHTML=`
+    <div class="stat-card total">
+      <div class="stat-label">Total Required Strength</div>
+      <div class="stat-value">${totalRequired>0?totalRequired:'—'}</div>
+      <div class="stat-sub">Sanctioned headcount</div>
+    </div>
+    <div class="stat-card present">
+      <div class="stat-label">Total Active Staff</div>
+      <div class="stat-value">${totalActive}</div>
+      <div class="stat-sub">${overallPct!==null?overallPct+'% of required strength':totalActive+' enrolled'}</div>
+    </div>
+    <div class="stat-card shortage">
+      <div class="stat-label">⚠️ Total Shortage</div>
+      <div class="stat-value">${totalShortage>0?totalShortage:'0'}</div>
+      <div class="stat-sub">${shortageCount} building${shortageCount!==1?'s':''} under required strength</div>
+    </div>
+    <div class="stat-card ${criticalCount>0?'absent':'ok-strength'}">
+      <div class="stat-label">${criticalCount>0?'🚨 Critical':'✅ Status'}</div>
+      <div class="stat-value">${criticalCount>0?criticalCount:'OK'}</div>
+      <div class="stat-sub">${criticalCount>0?'Building'+(criticalCount!==1?'s':'')+' below 80% of required':'All buildings meeting threshold'}</div>
+    </div>`;
+
+  // Main table
+  const noReq=rows.every(r=>r.req===0);
+  let tableHtml=`<table>
+    <thead><tr>
+      <th>Building</th>
+      <th style="text-align:center">Active Staff</th>
+      <th style="text-align:center">Present</th>
+      <th style="text-align:center">Absent</th>
+      <th style="text-align:center">Week Off</th>
+      <th style="text-align:center">Required</th>
+      <th style="text-align:center">Shortage</th>
+      <th style="text-align:center">Fill Rate</th>
+      <th style="text-align:center">Coverage</th>
+      <th style="text-align:center">Status</th>
+    </tr></thead><tbody>`;
+
+  rows.sort((a,b)=>{
+    // Critical first, then warn, then ok/none; within same level sort by shortage desc
+    const order={critical:0,warn:1,ok:2,none:3};
+    if(order[a.level]!==order[b.level]) return order[a.level]-order[b.level];
+    return b.shortage-a.shortage;
+  }).forEach(r=>{
+    const fillBar=r.req>0?`<div class="shortage-bar-wrap"><div class="shortage-bar ${r.level}" style="width:${Math.min(r.pct,100)}%"></div></div>`:'—';
+    const statusBadge=r.req===0
+      ?`<span class="shortage-badge" style="background:var(--sand);color:var(--text-light);">Not Set</span>`
+      :r.level==='ok'
+        ?`<span class="shortage-badge ok">✅ Adequate</span>`
+        :r.level==='warn'
+          ?`<span class="shortage-badge warn">⚠️ Shortage</span>`
+          :`<span class="shortage-badge critical">🚨 Critical</span>`;
+    const shortageCell=r.req>0
+      ?(r.shortage>0?`<span style="color:${r.level==='critical'?'var(--shortage)':'var(--warn)'};font-weight:700">-${r.shortage}</span>`
+        :`<span style="color:var(--ok);font-weight:700">0</span>`)
+      :'—';
+    const fillRateCell=r.pct!==null
+      ?`<span style="font-weight:700;color:${r.pct>=100?'var(--ok)':r.pct>=60?'var(--warn)':'var(--shortage)'}">${r.pct}%</span>`
+      :'—';
+    tableHtml+=`<tr>
+      <td><strong>${r.b}</strong></td>
+      <td style="text-align:center">${r.bs.total}</td>
+      <td style="text-align:center;color:var(--present);font-weight:600">${r.bs.P}</td>
+      <td style="text-align:center;color:var(--absent)">${r.bs.A}</td>
+      <td style="text-align:center;color:var(--weekoff)">${r.bs.WO}</td>
+      <td style="text-align:center;font-weight:600">${r.req>0?r.req:'—'}</td>
+      <td style="text-align:center">${shortageCell}</td>
+      <td style="text-align:center">${fillRateCell}</td>
+      <td style="min-width:100px;padding:6px 14px;">${fillBar}</td>
+      <td style="text-align:center">${statusBadge}</td>
+    </tr>`;
+  });
+
+  // Totals row
+  const totalFill=totalRequired>0?Math.round(totalActive/totalRequired*100):null;
+  tableHtml+=`<tr style="background:var(--primary-light);font-weight:700;border-top:2px solid var(--primary);">
+    <td><strong>TOTAL</strong></td>
+    <td style="text-align:center">${totalActive}</td>
+    <td style="text-align:center;color:var(--present)">${totalPresent}</td>
+    <td style="text-align:center;color:var(--absent)">${rows.reduce((a,r)=>a+r.bs.A,0)}</td>
+    <td style="text-align:center;color:var(--weekoff)">${rows.reduce((a,r)=>a+r.bs.WO,0)}</td>
+    <td style="text-align:center">${totalRequired>0?totalRequired:'—'}</td>
+    <td style="text-align:center;color:${totalShortage>0?'var(--shortage)':'var(--ok)'}">${totalShortage>0?'-'+totalShortage:'0'}</td>
+    <td style="text-align:center">${totalFill!==null?`<span style="font-weight:700;color:${totalFill>=100?'var(--ok)':totalFill>=60?'var(--warn)':'var(--shortage)'}">${totalFill}%</span>`:'—'}</td>
+    <td></td><td></td>
+  </tr>`;
+  tableHtml+='</tbody></table>';
+
+  if(noReq){
+    tableHtml+=`<div style="background:#fef9ed;border-radius:8px;padding:14px 18px;margin-top:16px;font-size:13px;color:#92400e;">
+      💡 <strong>No required strength configured yet.</strong> 
+      ${isAdmin()?'Click <strong>⚙️ Set Required Strength</strong> above to configure the sanctioned headcount per building.':'Ask your administrator to configure required strength values.'}
+    </div>`;
+  }
+  document.getElementById('shortageTableWrap').innerHTML=tableHtml;
+
+  // Critical shortage panel
+  const criticals=rows.filter(r=>r.level==='critical');
+  const critCard=document.getElementById('criticalShortageCard');
+  if(criticals.length){
+    critCard.style.display='';
+    document.getElementById('criticalShortageList').innerHTML=criticals.map(r=>`
+      <div class="critical-bldg-row">
+        <div>
+          <div class="critical-bldg-name">🚨 ${r.b}</div>
+          <div class="critical-bldg-nums">Total Staff (P+A+WO): ${r.bs.total} &nbsp;|&nbsp; Required: ${r.req} &nbsp;|&nbsp; Shortage: ${r.shortage} staff</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:22px;font-weight:800;color:var(--shortage);font-family:'Playfair Display',serif;">${r.pct}%</div>
+          <div style="font-size:11px;color:var(--text-light)">fill rate</div>
+        </div>
+        <div style="width:120px;">
+          <div class="shortage-bar-wrap"><div class="shortage-bar critical" style="width:${r.pct}%"></div></div>
+          <div style="font-size:10px;color:var(--text-light);margin-top:3px;text-align:center">${r.pct}% of ${r.req} required</div>
+        </div>
+      </div>`).join('');
+  } else {
+    critCard.style.display='none';
+  }
+}
+
+// ── SHORTAGE CONFIG MODAL ─────────────────────────────────────
+function openShortageConfig(){
+  if(!isAdmin()){toast('⛔ Admin only',true);return;}
+  const bldgs=getBuildings();
+  document.getElementById('shortageConfigForm').innerHTML=bldgs.map(b=>`
+    <div style="display:grid;grid-template-columns:1fr 140px;align-items:center;gap:12px;padding:8px 12px;background:var(--primary-light);border-radius:7px;">
+      <div>
+        <div style="font-weight:700;font-size:13px;color:var(--primary);">🏢 ${b}</div>
+        <div style="font-size:11px;color:var(--text-light);">Active: ${accessFilter(DB.staff).filter(s=>s.building===b&&!isInactive(s)).length} staff</div>
+      </div>
+      <div>
+        <label style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);font-weight:600;">Required</label>
+        <input type="number" min="0" id="req_${b.replace(/\s+/g,'_')}" value="${DB.getRequiredStrength(b)||''}" placeholder="e.g. 25" style="width:100%;padding:6px 10px;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:14px;font-family:'DM Sans',sans-serif;">
+      </div>
+    </div>`).join('');
+  document.getElementById('shortageConfigModal').classList.add('open');
+}
+
+function closeShortageConfig(){
+  document.getElementById('shortageConfigModal').classList.remove('open');
+}
+
+function saveShortageConfig(){
+  if(!isAdmin()){toast('⛔ Admin only',true);return;}
+  const bldgs=getBuildings();
+  const updates={};
+  bldgs.forEach(b=>{
+    const key=b.replace(/\s+/g,'_');
+    const el=document.getElementById('req_'+key);
+    if(el){
+      const v=parseInt(el.value)||0;
+      updates[b]=v;
+    }
+  });
+  DB.setRequiredStrength(updates);
+  closeShortageConfig();
+  toast('✅ Required strength saved');
+  renderShortage();
+  renderDashboard();
 }
 
 // ── SIDEBAR TOGGLE ────────────────────────────────────────────
