@@ -839,6 +839,9 @@ const KNOWN_BUILDINGS=[
   'STAFF QUARTERS','NORTH BOYS HOSTEL','SOUTH GIRLS HOSTEL',
   'DINING','Manager/Supervisors','GARDEN'
 ];
+// Replaces spaces, slashes, and any char Firebase disallows in keys
+function sanitizeFirebaseKey(name){return name.replace(/[^a-zA-Z0-9]/g,'_');}
+
 const STATE={staff:[],att:{},timeLogs:{},requiredStrength:{},ready:false};
 let currentPage='dashboard';
 
@@ -866,10 +869,14 @@ const DB={
     if(!STATE.timeLogs[d])STATE.timeLogs[d]={};
     Object.assign(STATE.timeLogs[d],updates);
   },
-  getRequiredStrength(bldg){return STATE.requiredStrength[bldg]||0;},
+  getRequiredStrength(bldg){return STATE.requiredStrength[sanitizeFirebaseKey(bldg)]||0;},
   setRequiredStrength(data){
-    fbdb.ref('requiredStrength').update(data).catch(e=>toast('❌ Save failed: '+e.message,true));
-    Object.assign(STATE.requiredStrength,data);
+    const sanitized={};
+    Object.entries(data).forEach(([k,v])=>{sanitized[sanitizeFirebaseKey(k)]=v;});
+    fbdb.ref('requiredStrength').set(sanitized)
+      .then(()=>toast('✅ Required strength saved'))
+      .catch(e=>toast('❌ Save failed: '+e.message,true));
+    STATE.requiredStrength=sanitized;
   }
 };
 
@@ -2321,7 +2328,7 @@ function openShortageConfig(){
       </div>
       <div>
         <label style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);font-weight:600;">Required</label>
-        <input type="number" min="0" id="req_${b.replace(/\s+/g,'_')}" value="${DB.getRequiredStrength(b)||''}" placeholder="e.g. 25" style="width:100%;padding:6px 10px;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:14px;font-family:'DM Sans',sans-serif;">
+        <input type="number" min="0" id="req_${sanitizeFirebaseKey(b)}" value="${DB.getRequiredStrength(b)||''}" placeholder="e.g. 25" style="width:100%;padding:6px 10px;border:1.5px solid var(--sand-dark);border-radius:6px;font-size:14px;font-family:'DM Sans',sans-serif;">
       </div>
     </div>`).join('');
   document.getElementById('shortageConfigModal').classList.add('open');
@@ -2336,7 +2343,7 @@ function saveShortageConfig(){
   const bldgs=getBuildings();
   const updates={};
   bldgs.forEach(b=>{
-    const key=b.replace(/\s+/g,'_');
+    const key=sanitizeFirebaseKey(b);
     const el=document.getElementById('req_'+key);
     if(el){
       const v=parseInt(el.value)||0;
@@ -2345,7 +2352,6 @@ function saveShortageConfig(){
   });
   DB.setRequiredStrength(updates);
   closeShortageConfig();
-  toast('✅ Required strength saved');
   renderShortage();
   renderDashboard();
 }
