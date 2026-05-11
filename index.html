@@ -206,7 +206,8 @@
   .date-bar input,.date-bar select{width:auto;min-width:150px;}
 
   /* ── MONTHLY TABLE ── */
-  .monthly-table th{font-size:10px;padding:8px 5px;text-align:center;}
+  .monthly-table th{font-size:10px;padding:8px 5px;text-align:center;position:sticky;top:0;z-index:2;}
+  .monthly-table thead{position:sticky;top:0;z-index:2;}
   .monthly-table td{padding:6px 5px;text-align:center;font-size:12px;}
   .monthly-table td:first-child,.monthly-table td:nth-child(2){text-align:left;}
   .monthly-table td:first-child{font-weight:600;font-size:12.5px;}
@@ -318,14 +319,16 @@
   /* ── STAR DETAIL MODAL ── */
   .star-detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;align-items:center;justify-content:center;}
   .star-detail-overlay.open{display:flex;}
-  .star-detail-modal{background:#fff;border-radius:14px;width:720px;max-width:97vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:mIn .25s ease;}
+  .star-detail-modal{background:#fff;border-radius:14px;width:98vw;max-width:1100px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:mIn .25s ease;}
   .star-detail-header{background:linear-gradient(135deg,var(--primary),#1a7a65);color:#fff;padding:20px 26px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
   .star-detail-header h2{font-family:'Playfair Display',serif;font-size:18px;}
   .star-detail-tabs{display:flex;gap:0;border-bottom:2px solid var(--sand-dark);padding:0 20px;background:var(--sand);}
   .star-tab{padding:10px 18px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--text-light);transition:all .2s;}
   .star-tab.active{color:var(--primary);border-bottom-color:var(--primary);}
   .star-detail-body{padding:20px 24px;}
-  .star-staff-table td{padding:8px 12px;font-size:13px;}
+  .star-staff-table td{padding:6px 8px;font-size:12px;}
+  .star-staff-table th{padding:8px 8px;font-size:11px;}
+  .star-staff-table .star-cell{font-size:11px;letter-spacing:0;}
   .star-staff-table tr:hover td{background:var(--primary-light);}
   .consistency-bar{display:flex;gap:3px;align-items:center;}
   .cons-dot{width:12px;height:12px;border-radius:50%;display:inline-block;}
@@ -437,7 +440,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <div>
               <div style="font-family:'Playfair Display',serif;font-size:17px;color:var(--primary);">⭐ Attendance Star Ratings</div>
-              <div style="font-size:12px;color:var(--text-light);margin-top:2px;" id="starCardSubtitle">Based on last 3 months · Click for details</div>
+              <div style="font-size:12px;color:var(--text-light);margin-top:2px;" id="starCardSubtitle">Click for details</div>
             </div>
             <div style="font-size:22px;opacity:.35;">▶</div>
           </div>
@@ -448,8 +451,7 @@
             <div class="star-tier-pill t2"><div class="pill-stars">★★☆☆☆</div><div class="pill-count" id="sc2">—</div><div class="pill-label">Below Avg</div></div>
             <div class="star-tier-pill t1"><div class="pill-stars">★☆☆☆☆</div><div class="pill-count" id="sc1">—</div><div class="pill-label">Poor</div></div>
           </div>
-          <div style="font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">🏆 Consistent Top Performers</div>
-          <div class="star-top-row" id="starTopRow"><span style="font-size:12px;color:var(--text-light);">Loading...</span></div>
+
         </div>
       </div>
 
@@ -506,7 +508,7 @@
         </div>
         <div class="card">
           <div class="card-title" id="monthlyTitle">Monthly Attendance</div>
-          <div class="table-wrap" id="monthlyTableWrap"></div>
+          <div class="table-wrap" id="monthlyTableWrap" style="overflow-y:auto;max-height:70vh;"></div>
         </div>
       </div>
 
@@ -1232,8 +1234,12 @@ function renderDashboard(){
       </div>
     </div>`:'';
 
-  const absentHtml=absentStaff.length||woffStaff.length?`
-    <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+  // Leave staff
+  const leaveStaff=activeStaff.filter(s=>{const st=att[s.id]||'A';return st==='L';});
+
+  const cols=[absentStaff,woffStaff,leaveStaff].filter(a=>a.length).length;
+  const absentHtml=(absentStaff.length||woffStaff.length||leaveStaff.length)?`
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(${cols},1fr);gap:14px;">
       ${absentStaff.length?`<div style="background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
         <div style="padding:10px 16px;background:#fde8e8;font-size:12px;font-weight:700;color:var(--absent);">❌ Absent (${absentStaff.length})</div>
         <div style="max-height:160px;overflow-y:auto;">${absentStaff.map(s=>staffCard(s,false)).join('')}</div>
@@ -1242,10 +1248,14 @@ function renderDashboard(){
         <div style="padding:10px 16px;background:#ede8f7;font-size:12px;font-weight:700;color:var(--weekoff);">🔵 Week Off (${woffStaff.length})</div>
         <div style="max-height:160px;overflow-y:auto;">${woffStaff.map(s=>staffCard(s,false)).join('')}</div>
       </div>`:''}
+      ${leaveStaff.length?`<div style="background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">
+        <div style="padding:10px 16px;background:#fef0e6;font-size:12px;font-weight:700;color:#b45309;">🟠 On Leave (${leaveStaff.length})</div>
+        <div style="max-height:160px;overflow-y:auto;">${leaveStaff.map(s=>staffCard(s,false)).join('')}</div>
+      </div>`:''}
     </div>`:'';
 
   document.getElementById('todayTable').innerHTML=
-    `<div class="shift-panels">${shiftHtml}</div>${unlogHtml}${absentHtml}`;
+    `<div class="shift-panels">${shiftHtml}</div>${absentHtml}`;
 
   // Star rating card
   renderStarCard();
@@ -2056,19 +2066,8 @@ function renderStarCard(){
   _starData=computeStarData(3);
   const{tiers,topPerformers,months}=_starData;
   [5,4,3,2,1].forEach(n=>document.getElementById('sc'+n).textContent=tiers[n].length);
-  const mLabel=months.map(m=>new Date(m+'-01').toLocaleString('en',{month:'short'})).join(', ');
-  document.getElementById('starCardSubtitle').textContent=`Based on ${mLabel} · Click for details`;
-  const topEl=document.getElementById('starTopRow');
-  if(!topPerformers.length){
-    topEl.innerHTML='<span style="font-size:12px;color:var(--text-light);">No staff with consistent 4★+ rating yet</span>';
-  } else {
-    topEl.innerHTML=topPerformers.slice(0,12).map(s=>`
-      <span class="star-badge">
-        <span>${s.name}</span>
-        <span class="sb-stars">${s.avgStars>=4.5?'★★★★★':'★★★★☆'}</span>
-        <span style="font-size:10px;background:var(--primary);color:#fff;border-radius:8px;padding:1px 6px;">${s.building.split(' ')[0]}</span>
-      </span>`).join('');
-  }
+  const monthLabels=months.map(m=>new Date(m+'-01').toLocaleString('en',{month:'long',year:'numeric'})).join(' · ');
+  document.getElementById('starCardSubtitle').textContent=`${monthLabels} · Click for details`;
 }
 
 // ── STAR DETAIL MODAL ─────────────────────────────────────────
@@ -2106,7 +2105,7 @@ function switchStarTab(n,el){
 function renderStarTab(n){
   if(!_starData) return;
   const{tiers,topPerformers,months}=_starData;
-  const mHdrs=months.map(m=>`<th style="text-align:center;min-width:60px">${new Date(m+'-01').toLocaleString('en',{month:'short',year:'2-digit'})}</th>`).join('');
+  const mHdrs=months.map(m=>`<th style="text-align:center;min-width:52px;white-space:nowrap">${new Date(m+'-01').toLocaleString('en',{month:'short',year:'2-digit'})}</th>`).join('');
 
   function staffRows(list){
     if(!list.length) return`<tr><td colspan="${4+months.length}"><div class="empty"><div class="empty-icon">👥</div>No staff in this category.</div></td></tr>`;
@@ -2115,12 +2114,12 @@ function renderStarTab(n){
       const monthCells=s.monthlyStars.map(ms=>{
         const cls=ms.stars>=5?'s5':ms.stars>=4?'s4':ms.stars>=3?'s3':ms.stars>=2?'s2':'s1';
         const stars=ms.stars>=5?'★★★★★':ms.stars>=4?'★★★★☆':ms.stars>=3?'★★★☆☆':ms.stars>=2?'★★☆☆☆':'★☆☆☆☆';
-        return`<td style="text-align:center"><span class="star-cell ${cls}" title="${ms.pct}%">${stars}</span><br><span style="font-size:10px;color:var(--text-light)">${ms.pct}%</span></td>`;
+        return`<td style="text-align:center;padding:4px 6px"><span class="star-cell ${cls}" title="${ms.pct}%" style="font-size:10px;letter-spacing:0">${stars}</span><br><span style="font-size:10px;color:var(--text-light)">${ms.pct}%</span></td>`;
       }).join('');
       return`<tr>
-        <td style="font-weight:600;font-size:13px">${s.name}</td>
-        <td style="font-size:11px;color:var(--text-light)">${s.empId}</td>
-        <td><span class="badge badge-b" style="font-size:10px">${s.building}</span></td>
+        <td style="font-weight:600;font-size:12px;white-space:nowrap">${s.name}</td>
+        <td style="font-size:10px;color:var(--text-light);white-space:nowrap">${s.empId}</td>
+        <td><span class="badge badge-b" style="font-size:10px;white-space:nowrap">${s.building}</span></td>
         ${monthCells}
         <td style="text-align:center"><div class="consistency-bar">${dots}</div></td>
         <td style="text-align:center;font-weight:700;color:var(--gold)">${s.avgStars}★</td>
