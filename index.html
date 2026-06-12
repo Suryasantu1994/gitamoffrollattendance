@@ -186,7 +186,10 @@
   .att-radio[value="LFT"]+.att-label{border-color:#7f1d1d;color:#7f1d1d;}
   .att-radio[value="LFT"]:checked+.att-label{background:#7f1d1d;color:#fff;box-shadow:0 0 0 3px rgba(127,29,29,.18);}
   .badge-L{background:#fef0e6;color:#b45309;}
+  .badge-HD{background:#e0f2fe;color:#0369a1;font-weight:700;}
   .badge-LFT{background:#fee2e2;color:#7f1d1d;font-weight:800;}
+  .att-radio[value="HD"]+.att-label{border-color:#0369a1;color:#0369a1;}
+  .att-radio[value="HD"]:checked+.att-label{background:#0369a1;color:#fff;}
 
   /* ── BUILDING CARDS ── */
   .building-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
@@ -1096,10 +1099,11 @@ function renderDashboard(){
   let chartHtml='';
   bldgs.forEach(b=>{
     const bs=getSum(d,b);
-    const bp=bs.total?Math.round(bs.P/bs.total*100):0;
+    const req=DB.getRequiredStrength(b);
+    const _bdenom=req>bs.total?req:bs.total;
+    const bp=_bdenom?Math.round(bs.P/_bdenom*100):0;
     const bm=accessFilter(DB.staff).filter(s=>s.building===b&&!isInactive(s)&&s.gender==='M').length;
     const bf2=accessFilter(DB.staff).filter(s=>s.building===b&&!isInactive(s)&&s.gender==='F').length;
-    const req=DB.getRequiredStrength(b);
     const shortage=req>0?Math.max(req-bs.total,0):0;
     const shortageTag=req>0?(shortage>0
       ?`<span style="font-size:10px;font-weight:700;color:${shortage/req>0.4?'var(--shortage)':'var(--warn)'};white-space:nowrap;">⚠ -${shortage}</span>`
@@ -1150,7 +1154,8 @@ function renderDashboard(){
     const bStart=Math.max(bActive.length+bSep-bJoined,1);
     const bAttr=bSep>0?(bSep/bStart*100).toFixed(1)+'%':'0%';
     const bs2=getSum(d,b);
-    const bpct=bs2.total?Math.round(bs2.P/bs2.total*100):0;
+    const _breq2=DB.getRequiredStrength(b);const _bdenom2=_breq2>bs2.total?_breq2:bs2.total;
+    const bpct=_bdenom2?Math.round(bs2.P/_bdenom2*100):0;
     gRows+=`<tr>
       <td><strong>${b}</strong></td>
       <td style="text-align:center;font-weight:600">${bActive.length}</td>
@@ -1283,11 +1288,12 @@ function renderBuildingCards(){
   let html='';
   bldgs.forEach(b=>{
     const s=getSum(d,b);
-    const pct=s.total?Math.round(s.P/s.total*100):0;
+    const req=DB.getRequiredStrength(b);
+    const _bdenom=req>s.total?req:s.total;
+    const pct=_bdenom?Math.round(s.P/_bdenom*100):0;
     const bm=accessFilter(DB.staff).filter(x=>x.building===b&&!isInactive(x)&&x.gender==='M').length;
     const bf2=accessFilter(DB.staff).filter(x=>x.building===b&&!isInactive(x)&&x.gender==='F').length;
     const locked=!isAdmin()&&b!==myBuilding();
-    const req=DB.getRequiredStrength(b);
     const shortage=req>0?Math.max(req-s.total,0):0;
     const shortageHtml=req>0&&!locked?`
       <div style="margin-top:5px;display:flex;align-items:center;gap:6px;">
@@ -1459,15 +1465,16 @@ function loadDailyAttendance(){
   if(bf) staff=staff.filter(s=>s.building===bf);
   if(q) staff=staff.filter(s=>s.name.toLowerCase().includes(q)||s.empId.toLowerCase().includes(q));
   if(!staff.length){document.getElementById('attGrid').innerHTML='<div class="empty"><div class="empty-icon">👥</div>No staff found.</div>';return;}
-  let P=0,A=0,WO=0,L=0,LFT=0;
+  let P=0,A=0,WO=0,L=0,HD=0,LFT=0;
   const html=staff.map(s=>{
     const st=att[s.id]||'A';
-    if(st==='P')P++;else if(st==='WO')WO++;else if(st==='L')L++;else if(st==='LFT')LFT++;else A++;
+    if(st==='P')P++;else if(st==='WO')WO++;else if(st==='L')L++;else if(st==='HD')HD++;else if(st==='LFT')LFT++;else A++;
     const timeStr=tlogs[s.id]||'';
     const timeCell=buildTimeCell(s.id,d,s.name,st,timeStr);
     const alreadyLeft=s.status==='Left'&&s.leavingDate===d;
     const statuses=[
       {v:'P',label:'Present'},
+      {v:'HD',label:'Half Day'},
       {v:'A',label:'Absent'},
       {v:'WO',label:'Week Off'},
       {v:'L',label:'Leave'},
@@ -1490,7 +1497,7 @@ function loadDailyAttendance(){
   }).join('');
   document.getElementById('attGrid').innerHTML=html;
   document.getElementById('attSummary').textContent=
-    `✅ P:${P}  ❌ A:${A}  🔵 WO:${WO}  🟠 L:${L}  🔴 LFT:${LFT}  Total:${staff.length}`;
+    `✅ P:${P}  🔵 HD:${HD}  ❌ A:${A}  🔵 WO:${WO}  🟠 L:${L}  🔴 LFT:${LFT}  Total:${staff.length}`;
 }
 
 function buildTimeCell(sid,d,name,st,timeStr){
@@ -1613,8 +1620,9 @@ function renderMonthly(){
     dayHdrs+=`<th title="${fmt(dd)}">${i}<br><span style="font-weight:400;opacity:.7">${dow}</span></th>`;
   }
   const dayTotals=Array(days).fill(0);
+  const dayActiveStaff=Array(days).fill(0); // track staff eligible each day
   const rows=staff.map(s=>{
-    let P=0,A=0,WO=0,L=0,LFT=0,cells='';
+    let P=0,A=0,WO=0,L=0,HD=0,LFT=0,cells='';
     const leftThisMonth=s.status==='Left'&&s.leavingDate&&s.leavingDate.startsWith(month);
     for(let i=1;i<=days;i++){
       const dd=`${month}-${String(i).padStart(2,'0')}`;
@@ -1623,14 +1631,16 @@ function renderMonthly(){
         cells+=`<td style="background:#f1f5f9;color:#cbd5e1;font-size:10px;text-align:center">—</td>`;
         continue;
       }
+      dayActiveStaff[i-1]++;
       const st=DB.getAtt(dd)[s.id]||'A';
       if(st==='P'){P++;dayTotals[i-1]++;}
+      else if(st==='HD'){HD++;dayTotals[i-1]+=0.5;}
       else if(st==='WO')WO++;
       else if(st==='L')L++;
       else if(st==='LFT')LFT++;
       else A++;
-      const bg=st==='P'?'#d4f4e2':st==='WO'?'#ede8f7':st==='L'?'#fef0e6':st==='LFT'?'#fee2e2':'#fde8e8';
-      const fc=st==='P'?'#1a6e3c':st==='WO'?'#6b3fa0':st==='L'?'#b45309':st==='LFT'?'#7f1d1d':'#992b2b';
+      const bg=st==='P'?'#d4f4e2':st==='HD'?'#e0f2fe':st==='WO'?'#ede8f7':st==='L'?'#fef0e6':st==='LFT'?'#fee2e2':'#fde8e8';
+      const fc=st==='P'?'#1a6e3c':st==='HD'?'#0369a1':st==='WO'?'#6b3fa0':st==='L'?'#b45309':st==='LFT'?'#7f1d1d':'#992b2b';
       const fw=st==='LFT'?'900':'700';
       cells+=`<td style="background:${bg};color:${fc};border-radius:3px;font-weight:${fw}">${st}</td>`;
     }
@@ -1646,6 +1656,7 @@ function renderMonthly(){
       <td style="position:sticky;left:130px;background:#fff;min-width:60px;color:var(--text-light);font-size:11px">${s.empId}</td>
       ${cells}
       <td style="font-weight:700;color:var(--present)">${P}</td>
+      <td style="font-weight:700;color:#0369a1">${HD>0?HD:''}</td>
       <td style="font-weight:700;color:var(--absent)">${A}</td>
       <td style="font-weight:700;color:var(--weekoff)">${WO}</td>
       <td style="font-weight:700;color:#e67e22">${L}</td>
@@ -1659,14 +1670,27 @@ function renderMonthly(){
     ${dayTotalCells}
     <td colspan="6" style="background:var(--primary-light);font-size:11px;color:var(--text-light);text-align:center;"></td>
   </tr>`:''
-  let totalP=0,totalA=0,totalWO=0,totalL=0;
+  const dayPctCells=dayTotals.map((n,i)=>{
+    const active=dayActiveStaff[i]||staff.length;
+    const pct=active>0?Math.round(n/active*100):0;
+    const bg=pct>=90?'#d4f4e2':pct>=75?'#e8f5f1':pct>=50?'#fef3c7':'#fde8e8';
+    const fc=pct>=90?'#1a6e3c':pct>=75?'var(--primary)':pct>=50?'#92400e':'#992b2b';
+    return `<td style="background:${bg};color:${fc};font-weight:800;font-size:11px">${active>0?pct+'%':'—'}</td>`;
+  }).join('');
+  const dayPctRow=staff.length?`<tr style="background:#f0faf5;border-top:1px dashed var(--primary-mid);">
+    <td style="position:sticky;left:0;background:#f0faf5;min-width:130px;font-weight:700;color:var(--primary-mid);white-space:nowrap;font-size:11px">📊 Day-Wise %</td>
+    <td style="position:sticky;left:130px;background:#f0faf5;min-width:60px;font-size:10px;color:var(--text-light);">attend%</td>
+    ${dayPctCells}
+    <td colspan="6" style="background:#f0faf5;"></td>
+  </tr>`:''
+  let totalP=0,totalA=0,totalWO=0,totalL=0,totalHD=0;
   staff.forEach(s=>{
     const leftThisMonth=s.status==='Left'&&s.leavingDate&&s.leavingDate.startsWith(month);
     for(let i=1;i<=days;i++){
       const dd=`${month}-${String(i).padStart(2,'0')}`;
       if(leftThisMonth&&dd>s.leavingDate) continue;
       const st=DB.getAtt(dd)[s.id]||'A';
-      if(st==='P')totalP++;else if(st==='WO')totalWO++;else if(st==='L')totalL++;
+      if(st==='P')totalP++;else if(st==='WO')totalWO++;else if(st==='L')totalL++;else if(st==='HD')totalHD++;
       else if(st!=='LFT')totalA++;
     }
   });
@@ -1676,6 +1700,7 @@ function renderMonthly(){
     <td style="position:sticky;left:130px;background:var(--primary-light);min-width:60px;font-size:11px;color:var(--text-light);">${staff.length} staff</td>
     ${totalDayCells}
     <td style="color:var(--present);font-size:16px">${totalP}</td>
+    <td style="color:#0369a1">${totalHD>0?totalHD:''}</td>
     <td style="color:var(--absent)">${totalA}</td>
     <td style="color:var(--weekoff)">${totalWO}</td>
     <td style="color:#e67e22">${totalL}</td>
@@ -1688,12 +1713,12 @@ function renderMonthly(){
         <th style="position:sticky;left:0;background:var(--primary);min-width:130px">Name</th>
         <th style="position:sticky;left:130px;background:var(--primary);min-width:60px">ID</th>
         ${dayHdrs}
-        <th style="background:#27AE60">P</th><th style="background:#E74C3C">A</th>
+        <th style="background:#27AE60">P</th><th style="background:#0369a1">HD</th><th style="background:#E74C3C">A</th>
         <th style="background:#8E44AD">WO</th><th style="background:#e67e22">L</th>
         <th>% <span style="font-size:9px;opacity:.7">(P+WO)</span></th>
         <th>Rating</th>
       </tr></thead>
-      <tbody>${rows}${dayTotalsRow}${manDaysRow}</tbody>
+      <tbody>${rows}${dayTotalsRow}${dayPctRow}${manDaysRow}</tbody>
     </table>`;
 }
 // ── EXCEL EXPORT ──────────────────────────────────────────────
