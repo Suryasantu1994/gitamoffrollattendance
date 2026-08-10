@@ -1648,7 +1648,7 @@ function renderMonthly(){
     const effectiveDays=leftThisMonth
       ?Math.max(1,new Date(s.leavingDate)-new Date(month+'-01'))/86400000+1|0
       :days;
-    const pct=effectiveDays?Math.round((P+WO)/effectiveDays*100):0;
+    const pct=effectiveDays?Math.round((P+WO+HD)/effectiveDays*100):0;
     const rating=getStarRating(pct);
     const leftTag=leftThisMonth?`<span style="font-size:9px;background:#fee2e2;color:#7f1d1d;border-radius:8px;padding:1px 6px;margin-left:4px;font-weight:800">LEFT ${s.leavingDate}</span>`:'';
     return`<tr${leftThisMonth?' style="opacity:.85"':''}>
@@ -1704,7 +1704,7 @@ function renderMonthly(){
     <td style="color:var(--absent)">${totalA}</td>
     <td style="color:var(--weekoff)">${totalWO}</td>
     <td style="color:#e67e22">${totalL}</td>
-    <td style="color:var(--gold)">${totalP+totalWO>0?Math.round((totalP+totalWO)/(totalP+totalA+totalWO+totalL)*100):0}%</td>
+    <td style="color:var(--gold)">${totalP+totalWO+totalHD>0?Math.round((totalP+totalWO+totalHD)/(totalP+totalA+totalWO+totalL+totalHD)*100):0}%</td>
     <td></td>
   </tr>`:''
   document.getElementById('monthlyTableWrap').innerHTML=`
@@ -1715,7 +1715,7 @@ function renderMonthly(){
         ${dayHdrs}
         <th style="background:#27AE60">P</th><th style="background:#0369a1">HD</th><th style="background:#E74C3C">A</th>
         <th style="background:#8E44AD">WO</th><th style="background:#e67e22">L</th>
-        <th>% <span style="font-size:9px;opacity:.7">(P+WO)</span></th>
+        <th>% <span style="font-size:9px;opacity:.7">(P+WO+HD)</span></th>
         <th>Rating</th>
       </tr></thead>
       <tbody>${rows}${dayTotalsRow}${dayPctRow}${manDaysRow}</tbody>
@@ -1736,9 +1736,9 @@ function exportExcel(){
   const hdr=[['GITAM University – Directorate of Hospitality'],
     ['Monthly Attendance Report – '+mn+(bf?' – '+bf:'')],
     ['Generated: '+new Date().toLocaleString('en-IN')],[],
-    ['Emp ID','Name','Designation','Building','Gender','Status',...Array.from({length:days},(_,i)=>i+1),'Present','Absent','Week Off','Leave','Left Day','% (P+WO)','Rating']];
+    ['Emp ID','Name','Designation','Building','Gender','Status',...Array.from({length:days},(_,i)=>i+1),'Present','Absent','Week Off','Half Day','Leave','Left Day','% (P+WO+HD)','Rating']];
   staff.forEach(s=>{
-    let P=0,A=0,WO=0,L=0,LFT=0;
+    let P=0,A=0,WO=0,L=0,HD=0,LFT=0;
     const leftThisMonth=s.status==='Left'&&s.leavingDate&&s.leavingDate.startsWith(month);
     const row=[s.empId,s.name,s.desig,s.building,s.gender==='M'?'Male':'Female',
                leftThisMonth?`Left ${s.leavingDate}`:'Active'];
@@ -1747,24 +1747,24 @@ function exportExcel(){
       if(leftThisMonth&&dd>s.leavingDate){row.push('');continue;}
       const st=DB.getAtt(dd)[s.id]||'A';
       row.push(st);
-      if(st==='P')P++;else if(st==='WO')WO++;else if(st==='L')L++;else if(st==='LFT')LFT++;else A++;
+      if(st==='P')P++;else if(st==='WO')WO++;else if(st==='L')L++;else if(st==='HD')HD++;else if(st==='LFT')LFT++;else A++;
     }
     const effectiveDays=leftThisMonth
       ?Math.max(1,Math.round((new Date(s.leavingDate)-new Date(month+'-01'))/86400000)+1)
       :days;
-    const exPct=effectiveDays?((P+WO)/effectiveDays*100):0;
+    const exPct=effectiveDays?((P+WO+HD)/effectiveDays*100):0;
     const exStars=exPct>=90?'★★★★★':exPct>=80?'★★★★☆':exPct>=70?'★★★☆☆':exPct>=50?'★★☆☆☆':'★☆☆☆☆';
-    row.push(P,A,WO,L,LFT>0?s.leavingDate:'',exPct.toFixed(1)+'%',exStars);
+    row.push(P,A,WO,HD,L,LFT>0?s.leavingDate:'',exPct.toFixed(1)+'%',exStars);
     hdr.push(row);
   });
   // Man-days total row
-  let totP=0,totA=0,totWO=0,totL=0;
-  staff.forEach(s=>{for(let i=1;i<=days;i++){const dd=`${month}-${String(i).padStart(2,'0')}`;const st=DB.getAtt(dd)[s.id]||'A';if(st==='P')totP++;else if(st==='WO')totWO++;else if(st==='L')totL++;else totA++;}});
+  let totP=0,totA=0,totWO=0,totL=0,totHD=0;
+  staff.forEach(s=>{for(let i=1;i<=days;i++){const dd=`${month}-${String(i).padStart(2,'0')}`;const st=DB.getAtt(dd)[s.id]||'A';if(st==='P')totP++;else if(st==='WO')totWO++;else if(st==='L')totL++;else if(st==='HD')totHD++;else totA++;}});
   const blankCols=Array(days+3).fill('');
   hdr.push([]);
-  hdr.push(['','TOTAL MAN-DAYS PRESENT','','','',...blankCols,totP,totA,totWO,totL,staff.length*days?((totP+totWO)/(staff.length*days)*100).toFixed(1)+'%':'0%','']);
+  hdr.push(['','TOTAL MAN-DAYS PRESENT','','','',...blankCols,totP,totA,totWO,totHD,totL,staff.length*days?((totP+totWO+totHD)/(staff.length*days)*100).toFixed(1)+'%':'0%','']);
   const ws=XLSX.utils.aoa_to_sheet(hdr);
-  ws['!cols']=[{wch:8},{wch:22},{wch:18},{wch:22},{wch:8},...Array(days).fill({wch:4}),{wch:7},{wch:7},{wch:7},{wch:7},{wch:8}];
+  ws['!cols']=[{wch:8},{wch:22},{wch:18},{wch:22},{wch:8},...Array(days).fill({wch:4}),{wch:7},{wch:7},{wch:7},{wch:7},{wch:7},{wch:8},{wch:8}];
   XLSX.utils.book_append_sheet(wb,ws,'Monthly Attendance');
   // Building summary
   const bs=[['Building Summary – '+mn],['Building','Staff','Male','Female','Avg Present','Avg Absent','Attendance%','New Joinings','Left','Attrition%']];
@@ -1772,18 +1772,18 @@ function exportExcel(){
     const bStaff=accessFilter(DB.staff).filter(s=>s.building===b&&s.status!=='Left');
     const bm=bStaff.filter(s=>s.gender==='M').length;
     const bf2=bStaff.filter(s=>s.gender==='F').length;
-    let tP=0,tA=0;
+    let tP=0,tA=0,tWO=0,tHD=0;
     for(let i=1;i<=days;i++){
       const dd=`${month}-${String(i).padStart(2,'0')}`;
       const att=DB.getAtt(dd);
-      bStaff.forEach(s=>{const st=att[s.id]||'A';if(st==='P')tP++;else if(st!=='WO')tA++;});
+      bStaff.forEach(s=>{const st=att[s.id]||'A';if(st==='P')tP++;else if(st==='WO')tWO++;else if(st==='HD')tHD++;else if(st!=='LFT')tA++;});
     }
     const ttl=bStaff.length*days;
     const sc=accessFilter(DB.staff);
     const bJoined=sc.filter(x=>x.building===b&&x.joiningDate&&x.joiningDate.startsWith(month)).length;
     const bLeft=sc.filter(x=>x.building===b&&x.status==='Left'&&x.leavingDate&&x.leavingDate.startsWith(month)).length;
     const bStart=Math.max(bStaff.length+bLeft-bJoined,1);
-    bs.push([b,bStaff.length,bm,bf2,(tP/days).toFixed(1),(tA/days).toFixed(1),ttl?(tP/ttl*100).toFixed(1)+'%':'0%',bJoined,bLeft,bLeft>0?(bLeft/bStart*100).toFixed(1)+'%':'0%']);
+    bs.push([b,bStaff.length,bm,bf2,(tP/days).toFixed(1),(tA/days).toFixed(1),ttl?((tP+tWO+tHD)/ttl*100).toFixed(1)+'%':'0%',bJoined,bLeft,bLeft>0?(bLeft/bStart*100).toFixed(1)+'%':'0%']);
   });
   const ws2=XLSX.utils.aoa_to_sheet(bs);
   ws2['!cols']=[{wch:24},{wch:8},{wch:8},{wch:8},{wch:12},{wch:12},{wch:12},{wch:14},{wch:8},{wch:12}];
@@ -2059,13 +2059,13 @@ function computeStarData(lookbackMonths=3, viewMonth=null){
 
   function staffPct(s,month){
     const days=getDays(month);
-    let P=0,WO=0;
+    let P=0,WO=0,HD=0;
     for(let i=1;i<=days;i++){
       const dd=`${month}-${String(i).padStart(2,'0')}`;
       const st=DB.getAtt(dd)[s.id]||'A';
-      if(st==='P')P++;else if(st==='WO')WO++;
+      if(st==='P')P++;else if(st==='WO')WO++;else if(st==='HD')HD++;
     }
-    return days?Math.round((P+WO)/days*100):0;
+    return days?Math.round((P+WO+HD)/days*100):0;
   }
   function pctToStars(p){return p>=100?5:p>=90?4:p>=80?3:p>=70?2:1;}
 
