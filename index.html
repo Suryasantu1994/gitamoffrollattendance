@@ -294,6 +294,13 @@
   /* ── MAN-DAYS ROW ── */
   .mandays-row td{background:var(--primary-light);font-weight:700;color:var(--primary);border-top:2px solid var(--primary);}
 
+  /* ── MONTHLY CELL EDIT (admin) ── */
+  .monthly-cell-edit{cursor:pointer;position:relative;transition:transform .12s,box-shadow .12s;outline:none;}
+  .monthly-cell-edit:hover{transform:scale(1.25);box-shadow:0 2px 10px rgba(0,0,0,.22);z-index:10;border-radius:4px;}
+  .monthly-cell-edit:hover::after{content:attr(data-tip);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:#1a2e28;color:#fff;font-size:10px;white-space:nowrap;padding:3px 7px;border-radius:5px;pointer-events:none;z-index:20;font-weight:600;letter-spacing:.3px;}
+  .monthly-cell-edit.saving{animation:cellPulse .35s ease;}
+  @keyframes cellPulse{0%{transform:scale(1.35)}50%{transform:scale(1.5)}100%{transform:scale(1.25)}}
+
   /* ── STAR RATING ── */
   .star-cell{white-space:nowrap;font-size:13px;letter-spacing:1px;}
   .star-cell.s5{color:#f59e0b;}
@@ -501,7 +508,10 @@
       <div class="page" id="page-monthly">
         <div class="page-header">
           <div><h1>📋 Monthly Report</h1><p>Full month attendance breakdown</p></div>
-          <button class="btn btn-gold" onclick="exportExcel()">📥 Export Excel</button>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <span id="monthlyEditHint" style="display:none;font-size:11px;background:#e8f5f1;color:var(--primary);border-radius:20px;padding:4px 12px;font-weight:600;">✏️ Click any cell to edit status</span>
+            <button class="btn btn-gold" onclick="exportExcel()">📥 Export Excel</button>
+          </div>
         </div>
         <div class="date-bar">
           <label>Month:</label>
@@ -1603,6 +1613,9 @@ function getStarRating(pct){
 function renderMonthly(){
   const mEl=document.getElementById('reportMonth');
   if(!mEl.value) mEl.value=todayMonth();
+  // Show edit hint for admin
+  const hint=document.getElementById('monthlyEditHint');
+  if(hint) hint.style.display=isAdmin()?'inline-block':'none';
   const month=mEl.value, bf=document.getElementById('reportBldg').value;
   populateSelects();
   const days=getDays(month);
@@ -1642,7 +1655,12 @@ function renderMonthly(){
       const bg=st==='P'?'#d4f4e2':st==='HD'?'#e0f2fe':st==='WO'?'#ede8f7':st==='L'?'#fef0e6':st==='LFT'?'#fee2e2':'#fde8e8';
       const fc=st==='P'?'#1a6e3c':st==='HD'?'#0369a1':st==='WO'?'#6b3fa0':st==='L'?'#b45309':st==='LFT'?'#7f1d1d':'#992b2b';
       const fw=st==='LFT'?'900':'700';
-      cells+=`<td style="background:${bg};color:${fc};border-radius:3px;font-weight:${fw}">${st}</td>`;
+      if(isAdmin()&&!(leftThisMonth&&dd>s.leavingDate)){
+        const tip=`Click to change · ${fmt(dd)}`;
+        cells+=`<td class="monthly-cell-edit" id="mcell_${s.id}_${dd}" data-sid="${s.id}" data-date="${dd}" data-st="${st}" data-tip="${tip}" style="background:${bg};color:${fc};border-radius:3px;font-weight:${fw}" onclick="cycleMonthlyStatus(this)">${st}</td>`;
+      } else {
+        cells+=`<td style="background:${bg};color:${fc};border-radius:3px;font-weight:${fw}">${st}</td>`;
+      }
     }
     // Percentage: only count days up to and including leaving date
     const effectiveDays=leftThisMonth
@@ -1660,6 +1678,7 @@ function renderMonthly(){
       <td style="font-weight:700;color:var(--absent)">${A}</td>
       <td style="font-weight:700;color:var(--weekoff)">${WO}</td>
       <td style="font-weight:700;color:#e67e22">${L}</td>
+      <td style="font-weight:800;color:var(--primary);background:#e8f5f1">${P+HD+WO}</td>
       <td style="font-weight:700;color:var(--gold)">${pct}%</td>
       <td style="text-align:center">${rating}</td></tr>`;
   }).join('');
@@ -1668,7 +1687,7 @@ function renderMonthly(){
     <td style="position:sticky;left:0;background:var(--primary-light);min-width:130px;font-weight:700;color:var(--primary);white-space:nowrap;font-size:11px">📅 Day-Wise Present</td>
     <td style="position:sticky;left:130px;background:var(--primary-light);min-width:60px;font-size:10px;color:var(--text-light);">per day</td>
     ${dayTotalCells}
-    <td colspan="6" style="background:var(--primary-light);font-size:11px;color:var(--text-light);text-align:center;"></td>
+    <td colspan="7" style="background:var(--primary-light);font-size:11px;color:var(--text-light);text-align:center;"></td>
   </tr>`:''
   const dayPctCells=dayTotals.map((n,i)=>{
     const active=dayActiveStaff[i]||staff.length;
@@ -1681,7 +1700,7 @@ function renderMonthly(){
     <td style="position:sticky;left:0;background:#f0faf5;min-width:130px;font-weight:700;color:var(--primary-mid);white-space:nowrap;font-size:11px">📊 Day-Wise %</td>
     <td style="position:sticky;left:130px;background:#f0faf5;min-width:60px;font-size:10px;color:var(--text-light);">attend%</td>
     ${dayPctCells}
-    <td colspan="6" style="background:#f0faf5;"></td>
+    <td colspan="7" style="background:#f0faf5;"></td>
   </tr>`:''
   let totalP=0,totalA=0,totalWO=0,totalL=0,totalHD=0;
   staff.forEach(s=>{
@@ -1704,6 +1723,7 @@ function renderMonthly(){
     <td style="color:var(--absent)">${totalA}</td>
     <td style="color:var(--weekoff)">${totalWO}</td>
     <td style="color:#e67e22">${totalL}</td>
+    <td style="font-weight:900;color:var(--primary);background:#d4f4e2;font-size:14px">${totalP+totalWO+totalHD}</td>
     <td style="color:var(--gold)">${totalP+totalWO+totalHD>0?Math.round((totalP+totalWO+totalHD)/(totalP+totalA+totalWO+totalL+totalHD)*100):0}%</td>
     <td></td>
   </tr>`:''
@@ -1715,6 +1735,7 @@ function renderMonthly(){
         ${dayHdrs}
         <th style="background:#27AE60">P</th><th style="background:#0369a1">HD</th><th style="background:#E74C3C">A</th>
         <th style="background:#8E44AD">WO</th><th style="background:#e67e22">L</th>
+        <th style="background:var(--primary)">P+HD+WO</th>
         <th>% <span style="font-size:9px;opacity:.7">(P+WO+HD)</span></th>
         <th>Rating</th>
       </tr></thead>
@@ -1736,7 +1757,7 @@ function exportExcel(){
   const hdr=[['GITAM University – Directorate of Hospitality'],
     ['Monthly Attendance Report – '+mn+(bf?' – '+bf:'')],
     ['Generated: '+new Date().toLocaleString('en-IN')],[],
-    ['Emp ID','Name','Designation','Building','Gender','Status',...Array.from({length:days},(_,i)=>i+1),'Present','Absent','Week Off','Half Day','Leave','Left Day','% (P+WO+HD)','Rating']];
+    ['Emp ID','Name','Designation','Building','Gender','Status',...Array.from({length:days},(_,i)=>i+1),'Present','Absent','Week Off','Half Day','Leave','Left Day','Total (P+W+HD)','% (P+WO+HD)','Rating']];
   staff.forEach(s=>{
     let P=0,A=0,WO=0,L=0,HD=0,LFT=0;
     const leftThisMonth=s.status==='Left'&&s.leavingDate&&s.leavingDate.startsWith(month);
@@ -1754,7 +1775,7 @@ function exportExcel(){
       :days;
     const exPct=effectiveDays?((P+WO+HD)/effectiveDays*100):0;
     const exStars=exPct>=90?'★★★★★':exPct>=80?'★★★★☆':exPct>=70?'★★★☆☆':exPct>=50?'★★☆☆☆':'★☆☆☆☆';
-    row.push(P,A,WO,HD,L,LFT>0?s.leavingDate:'',exPct.toFixed(1)+'%',exStars);
+    row.push(P,A,WO,HD,L,LFT>0?s.leavingDate:'',P+WO+HD,exPct.toFixed(1)+'%',exStars);
     hdr.push(row);
   });
   // Man-days total row
@@ -1762,9 +1783,9 @@ function exportExcel(){
   staff.forEach(s=>{for(let i=1;i<=days;i++){const dd=`${month}-${String(i).padStart(2,'0')}`;const st=DB.getAtt(dd)[s.id]||'A';if(st==='P')totP++;else if(st==='WO')totWO++;else if(st==='L')totL++;else if(st==='HD')totHD++;else totA++;}});
   const blankCols=Array(days+3).fill('');
   hdr.push([]);
-  hdr.push(['','TOTAL MAN-DAYS PRESENT','','','',...blankCols,totP,totA,totWO,totHD,totL,staff.length*days?((totP+totWO+totHD)/(staff.length*days)*100).toFixed(1)+'%':'0%','']);
+  hdr.push(['','TOTAL MAN-DAYS PRESENT','','','',...blankCols,totP,totA,totWO,totHD,totL,totP+totWO+totHD,staff.length*days?((totP+totWO+totHD)/(staff.length*days)*100).toFixed(1)+'%':'0%','']);
   const ws=XLSX.utils.aoa_to_sheet(hdr);
-  ws['!cols']=[{wch:8},{wch:22},{wch:18},{wch:22},{wch:8},...Array(days).fill({wch:4}),{wch:7},{wch:7},{wch:7},{wch:7},{wch:7},{wch:8},{wch:8}];
+  ws['!cols']=[{wch:8},{wch:22},{wch:18},{wch:22},{wch:8},...Array(days).fill({wch:4}),{wch:7},{wch:7},{wch:7},{wch:7},{wch:7},{wch:10},{wch:8},{wch:8}];
   XLSX.utils.book_append_sheet(wb,ws,'Monthly Attendance');
   // Building summary
   const bs=[['Building Summary – '+mn],['Building','Staff','Male','Female','Avg Present','Avg Absent','Attendance%','New Joinings','Left','Attrition%']];
@@ -2378,6 +2399,33 @@ function saveShortageConfig(){
   closeShortageConfig();
   renderShortage();
   renderDashboard();
+}
+
+// ── MONTHLY CELL INLINE EDIT (Admin) ─────────────────────────
+const MONTHLY_STATUS_CYCLE=['P','HD','A','WO','L'];
+function cycleMonthlyStatus(td){
+  if(!isAdmin()){return;}
+  const sid=td.dataset.sid;
+  const dd=td.dataset.date;
+  const cur=td.dataset.st||'A';
+  // LFT status: confirm before cycling away (same as daily)
+  if(cur==='LFT'){
+    if(!confirm(`This staff was marked as LEFT on ${fmt(dd)}. Changing this may affect attrition records. Continue?`)) return;
+  }
+  const idx=MONTHLY_STATUS_CYCLE.indexOf(cur);
+  const next=MONTHLY_STATUS_CYCLE[(idx+1)%MONTHLY_STATUS_CYCLE.length];
+  // Update Firebase
+  DB.setAtt(dd,{[sid]:next});
+  // Update cell visuals immediately
+  const bg=next==='P'?'#d4f4e2':next==='HD'?'#e0f2fe':next==='WO'?'#ede8f7':next==='L'?'#fef0e6':'#fde8e8';
+  const fc=next==='P'?'#1a6e3c':next==='HD'?'#0369a1':next==='WO'?'#6b3fa0':next==='L'?'#b45309':'#992b2b';
+  td.style.background=bg;
+  td.style.color=fc;
+  td.textContent=next;
+  td.dataset.st=next;
+  td.classList.add('saving');
+  setTimeout(()=>td.classList.remove('saving'),400);
+  toast(`✏️ ${next} saved for ${fmt(dd)}`);
 }
 
 // ── SIDEBAR TOGGLE ────────────────────────────────────────────
