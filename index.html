@@ -246,16 +246,20 @@
   .access-denied h2{font-family:'Playfair Display',serif;color:var(--danger);margin-bottom:8px;}
 
   /* ── TIME LOG ── */
-  .att-row{grid-template-columns:200px 130px 1fr 140px;}
-  .time-log-cell{display:flex;align-items:center;gap:6px;}
+  .att-row{grid-template-columns:200px 130px 1fr 230px;}
+  .time-log-cell{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .time-badge{display:inline-flex;align-items:center;gap:4px;background:var(--gold-light);color:var(--gold);border-radius:14px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;}
   .time-badge.shift1{background:#dbeafe;color:#1e40af;}
   .time-badge.shift2{background:#d4f4e2;color:#1a6e3c;}
   .time-badge.shift3{background:#fef3c7;color:#92400e;}
+  .time-badge.shift4{background:#e0e7ff;color:#3730a3;}
   .time-edit-btn{background:none;border:1px solid var(--primary);border-radius:5px;color:var(--primary);font-size:10px;padding:2px 7px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;}
   .time-edit-btn:hover{background:var(--primary-light);}
   .time-input{width:90px;padding:4px 8px;border:1.5px solid var(--primary);border-radius:6px;font-size:12px;font-family:'DM Sans',sans-serif;}
   .time-save-btn{background:var(--primary);color:#fff;border:none;border-radius:5px;font-size:10px;padding:3px 8px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+  .night-shift-btn{background:#3730a3;color:#fff;border:none;border-radius:5px;font-size:10px;padding:3px 8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;white-space:nowrap;flex-shrink:0;}
+  .night-shift-btn:hover{background:#312e81;}
+  .night-shift-btn.active{outline:2px solid #a5b4fc;outline-offset:1px;}
 
   /* ── JOINING MODAL ── */
   .joining-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center;}
@@ -725,6 +729,7 @@
           <option value="07:00">🌅 7 AM Shift</option>
           <option value="09:00">☀️ 9 AM Shift</option>
           <option value="13:00">🌤️ 1 PM Shift</option>
+          <option value="21:00">🌙 Night Shift</option>
         </select>
       </div>
     </div>
@@ -1518,10 +1523,12 @@ function buildTimeCell(sid,d,name,st,timeStr){
     const badge=timeStr
       ?`<span class="time-badge ${shiftClass}">⏱ ${timeStr} · ${getShiftLabel(timeStr)}</span>`
       :`<span style="font-size:11px;color:var(--text-light);">No log</span>`;
+    const isNight=getShiftClass(timeStr)==='shift4';
     return`<div class="time-log-cell" style="gap:6px;align-items:center;">
       ${badge}
       <input type="time" class="time-input" id="tinput_${sid}" value="${timeStr||getAutoShiftTime()}"
         onchange="saveInlineTime('${sid}','${d}',this.value)" style="width:90px;">
+      <button type="button" class="night-shift-btn${isNight?' active':''}" onclick="setNightShift('${sid}','${d}')" title="Set to Night Shift (9 PM)">🌙 Night</button>
     </div>`;
   } else {
     // Non-admin: show badge only (no edit)
@@ -1979,21 +1986,30 @@ function getAutoShiftTime(){
   const h=new Date().getHours();
   if(h<8) return'07:00';
   if(h<11) return'09:00';
-  return'13:00';
+  if(h<18) return'13:00';
+  return'21:00';
 }
 function getShiftClass(t){
   if(!t) return'';
   const h=parseInt(t.split(':')[0]);
   if(h<8) return'shift1';
   if(h<11) return'shift2';
-  return'shift3';
+  if(h<18) return'shift3';
+  return'shift4';
 }
 function getShiftLabel(t){
   if(!t) return'';
   const h=parseInt(t.split(':')[0]);
   if(h<8) return'7AM Shift';
   if(h<11) return'9AM Shift';
-  return'1PM Shift';
+  if(h<18) return'1PM Shift';
+  return'Night Shift';
+}
+function setNightShift(sid,d){
+  const t='21:00';
+  const tinput=document.getElementById('tinput_'+sid);
+  if(tinput) tinput.value=t;
+  saveInlineTime(sid,d,t);
 }
 
 // ── ON ATTENDANCE CHANGE (auto-log time — inline update only) ─
@@ -2020,7 +2036,7 @@ function openTimeEdit(sid,d,name,currentTime){
   document.getElementById('timeEditInput').value=currentTime||getAutoShiftTime();
   // pre-select shift dropdown
   const h=currentTime?parseInt(currentTime.split(':')[0]):new Date().getHours();
-  document.getElementById('timeEditShift').value=h<8?'07:00':h<11?'09:00':'13:00';
+  document.getElementById('timeEditShift').value=h<8?'07:00':h<11?'09:00':h<18?'13:00':'21:00';
   document.getElementById('timeEditModal').classList.add('open');
 }
 function closeTimeEditModal(){document.getElementById('timeEditModal').classList.remove('open');}
