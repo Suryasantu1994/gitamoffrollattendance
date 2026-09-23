@@ -372,6 +372,155 @@
   .b-stat.shortage{color:var(--shortage);}
 
   .cons-dot.c0{background:#e2e8f0;}
+
+  /* ── ANIMATION KEYFRAMES ── */
+  @keyframes fadeInUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeInDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes slideInLeft{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+  @keyframes countUp{from{opacity:0;transform:translateY(8px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  @keyframes borderGlow{0%,100%{box-shadow:0 0 0 0 rgba(11,82,64,0)}50%{box-shadow:0 0 0 4px rgba(11,82,64,.15)}}
+  @keyframes toastIn{from{transform:translateY(80px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @keyframes loginFadeIn{from{opacity:0;transform:translateY(28px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes headerSlide{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+  @keyframes sidebarSlide{from{transform:translateX(-100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+  /* ── LOGIN ANIMATION ── */
+  .login-box{animation:loginFadeIn .5s cubic-bezier(.22,.68,0,1.2) both;}
+  .login-logo{animation:fadeInDown .45s .15s ease both;}
+  .login-title{animation:fadeIn .4s .25s ease both;}
+  .login-subtitle{animation:fadeIn .4s .32s ease both;}
+  .login-form{animation:fadeInUp .4s .38s ease both;}
+  .login-contact{animation:fadeIn .4s .5s ease both;}
+  .login-btn{transition:background .2s, transform .15s, box-shadow .2s;}
+  .login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(11,82,64,.3);}
+  .login-btn:active{transform:translateY(0);}
+
+  /* ── HEADER & SIDEBAR ANIMATION ── */
+  .header{animation:headerSlide .4s ease both;}
+  .sidebar{animation:sidebarSlide .4s .1s ease both;}
+
+  /* ── PAGE TRANSITIONS ── */
+  .page.active{
+    animation:fadeInUp .32s ease both;
+  }
+
+  /* ── STAT CARDS STAGGER ── */
+  .stat-card{
+    animation:fadeInUp .35s ease both;
+    transition:transform .2s, box-shadow .2s, border-top-color .3s;
+  }
+  .stat-grid .stat-card:nth-child(1){animation-delay:.04s}
+  .stat-grid .stat-card:nth-child(2){animation-delay:.08s}
+  .stat-grid .stat-card:nth-child(3){animation-delay:.12s}
+  .stat-grid .stat-card:nth-child(4){animation-delay:.16s}
+  .stat-grid .stat-card:nth-child(5){animation-delay:.2s}
+  .stat-grid .stat-card:nth-child(6){animation-delay:.24s}
+  .stat-grid .stat-card:nth-child(7){animation-delay:.28s}
+  .stat-grid .stat-card:nth-child(8){animation-delay:.32s}
+  .stat-card:hover{transform:translateY(-4px);box-shadow:0 12px 36px rgba(11,82,64,.18);}
+  .stat-value{animation:countUp .45s .2s ease both;}
+
+  /* ── CARD ANIMATIONS ── */
+  .card{
+    animation:fadeInUp .35s ease both;
+    transition:box-shadow .2s, transform .2s;
+  }
+  .card:hover{box-shadow:0 8px 28px rgba(11,82,64,.12);}
+
+  /* ── NAV ITEMS ── */
+  .nav-item{
+    transition:all .2s ease, border-left-color .15s;
+    position:relative;
+    overflow:hidden;
+  }
+  .nav-item::after{
+    content:'';position:absolute;inset:0;
+    background:rgba(255,255,255,0);
+    transition:background .2s;
+  }
+  .nav-item:hover::after{background:rgba(255,255,255,.04);}
+  .nav-item.active{transition:all .25s cubic-bezier(.4,0,.2,1);}
+
+  /* ── BUILDING CARDS ── */
+  .building-card{
+    animation:scaleIn .3s ease both;
+    transition:all .22s cubic-bezier(.4,0,.2,1);
+  }
+  .building-grid .building-card:nth-child(1){animation-delay:.05s}
+  .building-grid .building-card:nth-child(2){animation-delay:.1s}
+  .building-grid .building-card:nth-child(3){animation-delay:.15s}
+  .building-grid .building-card:nth-child(4){animation-delay:.2s}
+  .building-card:hover{transform:translateY(-4px) scale(1.01);box-shadow:0 10px 30px rgba(11,82,64,.18);}
+  .building-card.sel{animation:borderGlow .8s ease;transform:translateY(-2px);}
+
+  /* ── BUTTONS ── */
+  .btn{
+    transition:all .18s cubic-bezier(.4,0,.2,1);
+    position:relative;overflow:hidden;
+  }
+  .btn::after{
+    content:'';position:absolute;inset:0;
+    background:rgba(255,255,255,0);
+    transition:background .15s;
+  }
+  .btn:hover::after{background:rgba(255,255,255,.1);}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.18);}
+  .btn:active{transform:translateY(0);box-shadow:none;}
+  .btn-danger:hover{box-shadow:0 4px 14px rgba(192,57,43,.3);}
+  .btn-gold:hover{box-shadow:0 4px 14px rgba(154,123,42,.3);}
+
+  /* ── TABLE ROWS ── */
+  tbody tr{transition:background .15s;}
+  tbody tr:hover td{background:var(--primary-light);transition:background .15s;}
+
+  /* ── MODAL ── */
+  .modal-overlay{transition:opacity .22s ease;}
+  .modal-overlay:not(.open){opacity:0;pointer-events:none;}
+  .modal-overlay.open{opacity:1;}
+  .modal,.joining-modal,.star-detail-modal{
+    animation:mIn .28s cubic-bezier(.22,.68,0,1.1) both;
+  }
+  .modal-close{transition:color .15s, transform .15s;}
+  .modal-close:hover{color:var(--danger);transform:rotate(90deg);}
+
+  /* ── TOAST (uses existing transition:all .3s on base .toast) ── */
+
+  /* ── ATTENDANCE ROWS ── */
+  .att-row{
+    animation:slideInLeft .28s ease both;
+    transition:background .15s, box-shadow .15s;
+  }
+  .att-grid .att-row:nth-child(1){animation-delay:.03s}
+  .att-grid .att-row:nth-child(2){animation-delay:.06s}
+  .att-grid .att-row:nth-child(3){animation-delay:.09s}
+  .att-grid .att-row:nth-child(4){animation-delay:.12s}
+  .att-grid .att-row:nth-child(5){animation-delay:.15s}
+  .att-grid .att-row:nth-child(6){animation-delay:.18s}
+  .att-row:hover{background:var(--primary-light);box-shadow:inset 3px 0 0 var(--primary);}
+  .att-label{transition:all .18s cubic-bezier(.4,0,.2,1);}
+  .att-label:hover{transform:scale(1.05);}
+
+  /* ── INPUTS ── */
+  input,select{transition:border-color .2s, box-shadow .2s, background .2s;}
+  input:focus,select:focus{transform:none;}
+
+  /* ── STAR SUMMARY CARDS ── */
+  .star-summary-card{transition:transform .22s, box-shadow .22s;}
+  .star-summary-card:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(11,82,64,.15);}
+  .star-tier-pill{transition:transform .15s, box-shadow .15s;}
+  .star-tier-pill:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12);}
+
+  /* ── PAGE HEADER ── */
+  .page-header{animation:fadeInDown .3s ease both;}
+  .page-header h1{animation:fadeInDown .35s .05s ease both;}
+
+  /* ── REDUCE MOTION ── */
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important;}
+  }
 </style>
 </head>
 <body>
