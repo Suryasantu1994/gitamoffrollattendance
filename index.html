@@ -860,6 +860,18 @@
   </div>
 </div>
 
+<!-- SEPARATED STAFF MODAL -->
+<div class="joining-modal-overlay" id="separatedModal" onclick="if(event.target===this)closeSeparatedModal()">
+  <div class="joining-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="separatedModalTitle">🚪 Separated Staff</div>
+      <button class="modal-close" onclick="closeSeparatedModal()">✕</button>
+    </div>
+    <div id="separatedModalFilter" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;"></div>
+    <div id="separatedModalList"></div>
+  </div>
+</div>
+
 <!-- TIME EDIT MODAL -->
 <div class="modal-overlay" id="timeEditModal">
   <div class="modal" style="width:360px;">
@@ -1253,7 +1265,7 @@ function renderDashboard(){
 
   document.getElementById('workforceStats').innerHTML=`
     <div class="stat-card joining clickable" onclick="showJoiningModal('${month}')"><div class="stat-label">New Joinings</div><div class="stat-value">${joinedThisMonth}</div><div class="stat-sub">${mLabel} · Click for details</div></div>
-    <div class="stat-card leaving"><div class="stat-label">Separated Staff</div><div class="stat-value" style="font-size:28px">${separatedThisMonth}</div><div class="stat-sub">Left: ${leftThisMonth} &nbsp;|&nbsp; Resigned: ${resignedThisMonth}</div></div>
+    <div class="stat-card leaving clickable" onclick="showSeparatedModal('${month}')"><div class="stat-label">Separated Staff</div><div class="stat-value" style="font-size:28px">${separatedThisMonth}</div><div class="stat-sub">Left: ${leftThisMonth} &nbsp;|&nbsp; Resigned: ${resignedThisMonth} · Click for details</div></div>
     <div class="stat-card attrition"><div class="stat-label">Attrition Rate</div><div class="stat-value">${attrPct}%</div><div class="stat-sub">Left + Resigned</div></div>
     <div class="stat-card male"><div class="stat-label">👨 Male Staff</div><div class="stat-value">${maleCount}</div><div class="stat-sub">Active males</div></div>
     <div class="stat-card female"><div class="stat-label">👩 Female Staff</div><div class="stat-value">${femaleCount}</div><div class="stat-sub">Active females</div></div>`;
@@ -1800,6 +1812,11 @@ function renderMonthly(){
         cells+=`<td style="background:#f1f5f9;color:#cbd5e1;font-size:10px;text-align:center">—</td>`;
         continue;
       }
+      // Days before joining date: show blank, don't count
+      if(beforeJoin(s,dd)){
+        cells+=`<td style="background:#f8fafc;color:#cbd5e1;font-size:10px;text-align:center"></td>`;
+        continue;
+      }
       dayActiveStaff[i-1]++;
       const st=DB.getAtt(dd)[s.id]||'A';
       if(st==='P'){P++;dayTotals[i-1]++;}
@@ -1819,9 +1836,7 @@ function renderMonthly(){
       }
     }
     // Percentage: only count days up to and including leaving date
-    const effectiveDays=leftThisMonth
-      ?Math.max(1,new Date(s.leavingDate)-new Date(month+'-01'))/86400000+1|0
-      :days;
+    const effectiveDays=effDays(s,month,days);
     const pct=effectiveDays?Math.round((P+WO+HD)/effectiveDays*100):0;
     const rating=getStarRating(pct);
     const leftTag=leftThisMonth?`<span style="font-size:9px;background:#fee2e2;color:#7f1d1d;border-radius:8px;padding:1px 6px;margin-left:4px;font-weight:800">LEFT ${s.leavingDate}</span>`:'';
@@ -1864,6 +1879,7 @@ function renderMonthly(){
     for(let i=1;i<=days;i++){
       const dd=`${month}-${String(i).padStart(2,'0')}`;
       if(leftThisMonth&&dd>s.leavingDate) continue;
+      if(beforeJoin(s,dd)) continue;
       const st=DB.getAtt(dd)[s.id]||'A';
       if(st==='P')totalP++;else if(st==='WO')totalWO++;else if(st==='L')totalL++;else if(st==='HD')totalHD++;
       else if(st!=='LFT')totalA++;
@@ -1898,6 +1914,12 @@ function renderMonthly(){
       <tbody>${rows}${dayTotalsRow}${dayPctRow}${manDaysRow}</tbody>
     </table>`;
 }
+function beforeJoin(s,dd){return !!(s.joiningDate&&dd<s.joiningDate);}
+function effDays(s,month,days){
+  const st=(s.joiningDate&&s.joiningDate.startsWith(month))?parseInt(s.joiningDate.slice(8,10),10):1;
+  const en=(s.status==='Left'&&s.leavingDate&&s.leavingDate.startsWith(month))?parseInt(s.leavingDate.slice(8,10),10):days;
+  return Math.max(1,en-st+1);
+}
 // ── EXCEL EXPORT ──────────────────────────────────────────────
 function exportExcel(){
   const month=document.getElementById('reportMonth').value||todayMonth();
@@ -1922,13 +1944,12 @@ function exportExcel(){
     for(let i=1;i<=days;i++){
       const dd=`${month}-${String(i).padStart(2,'0')}`;
       if(leftThisMonth&&dd>s.leavingDate){row.push('');continue;}
+      if(beforeJoin(s,dd)){row.push('');continue;}
       const st=DB.getAtt(dd)[s.id]||'A';
       row.push(st);
       if(st==='P')P++;else if(st==='WO')WO++;else if(st==='L')L++;else if(st==='HD')HD++;else if(st==='LFT')LFT++;else A++;
     }
-    const effectiveDays=leftThisMonth
-      ?Math.max(1,Math.round((new Date(s.leavingDate)-new Date(month+'-01'))/86400000)+1)
-      :days;
+    const effectiveDays=effDays(s,month,days);
     const exPct=effectiveDays?((P+WO+HD)/effectiveDays*100):0;
     const exStars=exPct>=90?'★★★★★':exPct>=80?'★★★★☆':exPct>=70?'★★★☆☆':exPct>=50?'★★☆☆☆':'★☆☆☆☆';
     row.push(P,A,WO,HD,L,LFT>0?s.leavingDate:'',P+WO+HD,exPct.toFixed(1)+'%',exStars);
@@ -1936,10 +1957,11 @@ function exportExcel(){
   });
   // Man-days total row
   let totP=0,totA=0,totWO=0,totL=0,totHD=0;
-  staff.forEach(s=>{for(let i=1;i<=days;i++){const dd=`${month}-${String(i).padStart(2,'0')}`;const st=DB.getAtt(dd)[s.id]||'A';if(st==='P')totP++;else if(st==='WO')totWO++;else if(st==='L')totL++;else if(st==='HD')totHD++;else totA++;}});
+  let totDays=0;
+  staff.forEach(s=>{const lt=s.status==='Left'&&s.leavingDate&&s.leavingDate.startsWith(month);for(let i=1;i<=days;i++){const dd=`${month}-${String(i).padStart(2,'0')}`;if(beforeJoin(s,dd)||(lt&&dd>s.leavingDate))continue;totDays++;const st=DB.getAtt(dd)[s.id]||'A';if(st==='P')totP++;else if(st==='WO')totWO++;else if(st==='L')totL++;else if(st==='HD')totHD++;else totA++;}});
   const blankCols=Array(days+3).fill('');
   hdr.push([]);
-  hdr.push(['','TOTAL MAN-DAYS PRESENT','','','',...blankCols,totP,totA,totWO,totHD,totL,totP+totWO+totHD,staff.length*days?((totP+totWO+totHD)/(staff.length*days)*100).toFixed(1)+'%':'0%','']);
+  hdr.push(['','TOTAL MAN-DAYS PRESENT','','','',...blankCols,totP,totA,totWO,totHD,totL,totP+totWO+totHD,totDays?((totP+totWO+totHD)/totDays*100).toFixed(1)+'%':'0%','']);
   const ws=XLSX.utils.aoa_to_sheet(hdr);
   ws['!cols']=[{wch:8},{wch:22},{wch:18},{wch:22},{wch:8},...Array(days).fill({wch:4}),{wch:7},{wch:7},{wch:7},{wch:7},{wch:7},{wch:10},{wch:8},{wch:8}];
   XLSX.utils.book_append_sheet(wb,ws,'Monthly Attendance');
@@ -1949,13 +1971,13 @@ function exportExcel(){
     const bStaff=accessFilter(DB.staff).filter(s=>s.building===b&&s.status!=='Left');
     const bm=bStaff.filter(s=>s.gender==='M').length;
     const bf2=bStaff.filter(s=>s.gender==='F').length;
-    let tP=0,tA=0,tWO=0,tHD=0;
+    let tP=0,tA=0,tWO=0,tHD=0,bDays=0;
     for(let i=1;i<=days;i++){
       const dd=`${month}-${String(i).padStart(2,'0')}`;
       const att=DB.getAtt(dd);
-      bStaff.forEach(s=>{const st=att[s.id]||'A';if(st==='P')tP++;else if(st==='WO')tWO++;else if(st==='HD')tHD++;else if(st!=='LFT')tA++;});
+      bStaff.forEach(s=>{if(beforeJoin(s,dd))return;bDays++;const st=att[s.id]||'A';if(st==='P')tP++;else if(st==='WO')tWO++;else if(st==='HD')tHD++;else if(st!=='LFT')tA++;});
     }
-    const ttl=bStaff.length*days;
+    const ttl=bDays;
     const sc=accessFilter(DB.staff);
     const bJoined=sc.filter(x=>x.building===b&&x.joiningDate&&x.joiningDate.startsWith(month)).length;
     const bLeft=sc.filter(x=>x.building===b&&x.status==='Left'&&x.leavingDate&&x.leavingDate.startsWith(month)).length;
@@ -2228,6 +2250,33 @@ function showJoiningModal(month){
   document.getElementById('joiningModal').classList.add('open');
 }
 function closeJoiningModal(){document.getElementById('joiningModal').classList.remove('open');}
+
+// ── SEPARATED STAFF MODAL ─────────────────────────────────────
+let _sepMonth=null,_sepFilter='all';
+function showSeparatedModal(month){_sepMonth=month;_sepFilter='all';renderSeparatedModal();document.getElementById('separatedModal').classList.add('open');}
+function setSepFilter(f){_sepFilter=f;renderSeparatedModal();}
+function renderSeparatedModal(){
+  const all=accessFilter(DB.staff).filter(x=>isInactive(x)&&x.leavingDate&&x.leavingDate.startsWith(_sepMonth))
+    .sort((a,b)=>a.leavingDate.localeCompare(b.leavingDate));
+  const nL=all.filter(x=>x.status==='Left').length, nR=all.filter(x=>x.status==='Resigned').length;
+  const mLabel=new Date(_sepMonth+'-01').toLocaleString('en',{month:'long',year:'numeric'});
+  document.getElementById('separatedModalTitle').textContent=`🚪 Separated Staff — ${mLabel}`;
+  const chip=(k,l)=>`<button class="btn ${_sepFilter===k?'btn-primary':'btn-outline'}" style="padding:4px 12px;font-size:12px" onclick="setSepFilter('${k}')">${l}</button>`;
+  document.getElementById('separatedModalFilter').innerHTML=chip('all',`All (${all.length})`)+chip('Left',`Left (${nL})`)+chip('Resigned',`Resigned (${nR})`);
+  const list=_sepFilter==='all'?all:all.filter(x=>x.status===_sepFilter);
+  document.getElementById('separatedModalList').innerHTML=list.length?list.map(s=>{
+    let tenure='';
+    if(s.joiningDate&&s.leavingDate){const d=Math.max(0,Math.round((new Date(s.leavingDate)-new Date(s.joiningDate))/864e5));const y=Math.floor(d/365),m=Math.floor(d%365/30);tenure=' · Tenure: '+(y?y+'y ':'')+m+'m';}
+    return `<div class="joining-list-item">
+      <div class="joining-avatar">${s.gender==='M'?'👨':'👩'}</div>
+      <div class="joining-info">
+        <div class="joining-name">${s.name} <span class="badge badge-${s.status}">${s.status}</span></div>
+        <div class="joining-meta">${s.empId} · ${s.desig} · Left on: ${fmt(s.leavingDate)}${tenure}</div>
+      </div>
+      <span class="joining-location">🏢 ${s.building}</span>
+    </div>`;}).join(''):'<div class="empty"><div class="empty-icon">✅</div>No separations found.</div>';
+}
+function closeSeparatedModal(){document.getElementById('separatedModal').classList.remove('open');}
 
 // ── STAR RATING CARD ──────────────────────────────────────────
 let _starData=null; // cached computation
